@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slot Machine V3</title>
+    <title>Plinko Game</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -63,7 +63,7 @@
         }
         
         .game-container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 2rem auto;
             padding: 1rem;
             display: flex;
@@ -71,8 +71,8 @@
             gap: 2rem;
         }
         
-        /* Slot Machine Styles */
-        .slot-machine {
+        /* Plinko Board Styles */
+        .plinko-board {
             background-color: var(--dark-green);
             border-radius: 10px;
             padding: 2rem;
@@ -80,35 +80,70 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative;
         }
         
-        .reels-container {
-            display: flex;
-            gap: 15px;
-            margin: 2rem 0;
-            perspective: 1000px;
-        }
-        
-        .reel-container {
-    position: relative;
-    overflow: hidden; /* This should NOT be 'visible' */
-    height: 180px; /* Match symbol height */
-}
-
-.reel {
-    display: flex;
-    flex-direction: column;
-    transition: transform 3s ease-out;
-}
-
-        
-        .slot-symbol {
-            height: 180px;
+        .board-container {
+            width: 100%;
             display: flex;
             justify-content: center;
-            align-items: center;
-            font-size: 3.5rem;
-            color: var(--white);
+            margin-bottom: 2rem;
+        }
+        
+        .board {
+            width: 400px;
+            height: 500px;
+            background-color: var(--light-green);
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            border: 4px solid var(--secondary);
+        }
+        
+        .peg {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--secondary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+        
+        .chip {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background-color: var(--secondary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(248, 197, 55, 0.7);
+            transition: transform 0.05s linear;
+        }
+        
+        .bucket {
+            position: absolute;
+            bottom: 0;
+            height: 70px;
+            background-color: var(--primary);
+            border-top: 4px solid var(--secondary);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            color: var(--secondary);
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding-top: 8px;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .bucket.highlight {
+            background-color: var(--secondary);
+            color: var(--black);
+            box-shadow: 0 0 15px var(--secondary);
         }
         
         .slot-controls {
@@ -127,7 +162,7 @@
             flex-wrap: wrap;
         }
         
-        .chip {
+        .bet-btn {
             padding: 0.5rem 1rem;
             font-size: 1rem;
             background-color: var(--secondary);
@@ -140,19 +175,19 @@
             box-shadow: 0 3px 10px rgba(0,0,0,0.2);
         }
         
-        .chip:hover {
+        .bet-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         
-        .chip.active {
+        .bet-btn.active {
             transform: scale(1.1);
             background-color: var(--red);
             color: var(--white);
             box-shadow: 0 0 15px rgba(231, 76, 60, 0.7);
         }
         
-        .spin-btn {
+        .drop-btn {
             padding: 1rem 2rem;
             font-size: 1.2rem;
             background-color: var(--secondary);
@@ -165,18 +200,18 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
-        .spin-btn:hover {
+        .drop-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 7px 20px rgba(0,0,0,0.3);
         }
         
-        .spin-btn:disabled {
+        .drop-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
         
-        .paytable {
+        .multiplier-display {
             background-color: var(--dark-green);
             border-radius: 10px;
             padding: 1.5rem;
@@ -185,23 +220,32 @@
             width: 100%;
         }
         
-        .paytable h2 {
+        .multiplier-display h2 {
             color: var(--secondary);
             margin-bottom: 1rem;
             text-align: center;
         }
         
-        .paytable-grid {
+        .multiplier-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 1rem;
         }
         
-        .paytable-item {
+        .multiplier-item {
             background-color: var(--light-green);
             padding: 0.8rem;
             border-radius: 6px;
             text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .multiplier-item.highlight {
+            background-color: var(--secondary);
+            color: var(--black);
+            box-shadow: 0 0 15px var(--secondary);
+            transform: scale(1.05);
         }
         
         .win-animation {
@@ -243,26 +287,22 @@
         
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .reels-container {
-                gap: 10px;
+            .board {
+                width: 320px;
+                height: 400px;
             }
             
-            .reel {
-                width: 90px;
-                height: 135px;
+            .bucket {
+                font-size: 1rem;
+                height: 60px;
             }
             
-            .slot-symbol {
-                height: 135px;
-                font-size: 2.5rem;
-            }
-            
-            .spin-btn {
+            .drop-btn {
                 padding: 0.8rem 1.5rem;
                 font-size: 1rem;
             }
             
-            .chip {
+            .bet-btn {
                 padding: 0.4rem 0.8rem;
                 font-size: 0.9rem;
             }
@@ -271,7 +311,7 @@
 </head>
 <body>
     <header>
-        <h1>Slot Machine</h1>
+        <h1>Plinko Game</h1>
         <div class="balance-display">
             <i class="fas fa-coins"></i>
             <span id="balance">10000</span>
@@ -279,35 +319,40 @@
     </header>
     
     <div class="game-container">
-        <div class="slot-machine">
-            <div class="reels-container" id="reels">
-                <!-- Reels will be generated by JavaScript -->
+        <div class="plinko-board">
+            <div class="board-container">
+                <div class="board" id="board">
+                    <!-- Pegs and buckets will be generated by JavaScript -->
+                </div>
             </div>
             
             <div class="slot-controls">
                 <div class="bet-controls">
-                    <button class="chip chip-5" data-value="5">$5</button>
-                    <button class="chip chip-10" data-value="10">$10</button>
-                    <button class="chip chip-25" data-value="25">$25</button>
-                    <button class="chip chip-50" data-value="50">$50</button>
-                    <button class="chip chip-100" data-value="100">$100</button>
-                    <button class="chip chip-500" data-value="500">$500</button>
-                    <button class="chip chip-1000" data-value="1000">$1000</button>
+                    <button class="bet-btn bet-5" data-value="5">$5</button>
+                    <button class="bet-btn bet-10" data-value="10">$10</button>
+                    <button class="bet-btn bet-25" data-value="25">$25</button>
+                    <button class="bet-btn bet-50" data-value="50">$50</button>
+                    <button class="bet-btn bet-100" data-value="100">$100</button>
+                    <button class="bet-btn bet-500" data-value="500">$500</button>
                 </div>
                 
                 <div class="bet-display">
                     Current Bet: $<span id="current-bet">0</span>
                 </div>
                 
-                <button id="spin-btn" class="spin-btn" disabled>
-                    <i class="fas fa-redo"></i> SPIN
+                <button id="drop-btn" class="drop-btn">
+                    <i class="fas fa-arrow-down"></i> DROP CHIP
+                </button>
+                
+                <button id="drop-multi-btn" class="drop-btn" style="margin-top: 10px;">
+                    <i class="fas fa-bomb"></i> DROP 10 CHIPS
                 </button>
             </div>
             
-            <div class="paytable">
-                <h2>Paytable</h2>
-                <div class="paytable-grid" id="paytable">
-                    <!-- Paytable will be generated by JavaScript -->
+            <div class="multiplier-display">
+                <h2>Multipliers</h2>
+                <div class="multiplier-grid" id="multipliers">
+                    <!-- Multipliers will be generated by JavaScript -->
                 </div>
             </div>
         </div>
@@ -324,196 +369,327 @@
         // Game configuration
         const config = {
             initialBalance: 10000,
-            symbols: [
-                { icon: '🍒', name: 'Cherry', multiplier: 2 },
-                { icon: '🍋', name: 'Lemon', multiplier: 3 },
-                { icon: '🍊', name: 'Orange', multiplier: 4 },
-                { icon: '🍇', name: 'Grape', multiplier: 5 },
-                { icon: '🍉', name: 'Watermelon', multiplier: 7 },
-                { icon: '💰', name: 'Money Bag', multiplier: 10 },
-                { icon: '7️⃣', name: 'Seven', multiplier: 15 },
-                { icon: '⭐', name: 'Star', multiplier: 20 }
-            ],
-            reelCount: 3,
-            spinDuration: 3000,
-            symbolCount: 8
+            pegRows: 14,
+            pegCols: 9,
+            pegSpacing: 32,
+            bucketCount: 9,
+            multipliers: [0.2, 0.5, 1, 2, 5, 2, 1, 0.5, 0.2],
+            pegSize: 8,
+            chipSize: 14,
+            maxChips: 100,
+            chipDropDelay: 50,
+            highlightDuration: 1000
         };
 
         // Game state
         const state = {
             balance: config.initialBalance,
             currentBet: 0,
-            spinning: false,
-            reels: []
+            activeChips: 0,
+            chips: [],
+            animationRunning: false,
+            dropQueue: 0
         };
 
         // DOM elements
         const elements = {
             balance: document.getElementById('balance'),
             currentBet: document.getElementById('current-bet'),
-            spinBtn: document.getElementById('spin-btn'),
-            reelsContainer: document.getElementById('reels'),
-            paytable: document.getElementById('paytable'),
+            dropBtn: document.getElementById('drop-btn'),
+            dropMultiBtn: document.getElementById('drop-multi-btn'),
+            board: document.getElementById('board'),
+            multipliers: document.getElementById('multipliers'),
             winAnimation: document.getElementById('win-animation'),
             winMessage: document.getElementById('win-message'),
             winAmount: document.getElementById('win-amount'),
-            chipButtons: document.querySelectorAll('.chip')
+            betButtons: document.querySelectorAll('.bet-btn')
         };
 
         // Initialize the game
         function init() {
-            createReels();
-            createPaytable();
+            createBoard();
+            createMultipliers();
             updateUI();
             setupEventListeners();
         }
 
-        // Create the slot reels
-        function createReels() {
-            elements.reelsContainer.innerHTML = '';
+        // Create the Plinko board with pegs and buckets
+        function createBoard() {
+            elements.board.innerHTML = '';
             
-            for (let i = 0; i < config.reelCount; i++) {
-                const reel = document.createElement('div');
-                reel.className = 'reel';
+            const boardWidth = elements.board.offsetWidth;
+            const boardHeight = elements.board.offsetHeight;
+            
+            // Create pegs in a grid pattern
+            for (let row = 0; row < config.pegRows; row++) {
+                const startX = (boardWidth - (config.pegCols - 1) * config.pegSpacing) / 2;
+                const y = 40 + row * config.pegSpacing;
                 
-                const reelInner = document.createElement('div');
-                reelInner.className = 'reel-inner';
+                // Alternate starting position for each row to create staggered pattern
+                const rowStartX = row % 2 === 0 ? startX : startX + config.pegSpacing / 2;
+                const rowCols = row % 2 === 0 ? config.pegCols : config.pegCols - 1;
                 
-                // Create symbols for this reel
-                for (let j = 0; j < config.symbolCount; j++) {
-                    const symbol = document.createElement('div');
-                    symbol.className = 'slot-symbol';
-                    const randomSymbol = config.symbols[Math.floor(Math.random() * config.symbols.length)];
-                    symbol.textContent = randomSymbol.icon;
-                    symbol.dataset.symbol = randomSymbol.name;
-                    reelInner.appendChild(symbol);
+                for (let col = 0; col < rowCols; col++) {
+                    const peg = document.createElement('div');
+                    peg.className = 'peg';
+                    peg.style.left = `${rowStartX + col * config.pegSpacing}px`;
+                    peg.style.top = `${y}px`;
+                    peg.style.width = `${config.pegSize}px`;
+                    peg.style.height = `${config.pegSize}px`;
+                    elements.board.appendChild(peg);
                 }
-                
-                // Add one more symbol at the end to make the loop seamless
-                const firstSymbol = reelInner.children[0].cloneNode(true);
-                reelInner.appendChild(firstSymbol);
-                
-                reel.appendChild(reelInner);
-                elements.reelsContainer.appendChild(reel);
-                state.reels.push(reelInner);
+            }
+            
+            // Create buckets at the bottom
+            const bucketWidth = boardWidth / config.bucketCount;
+            for (let i = 0; i < config.bucketCount; i++) {
+                const bucket = document.createElement('div');
+                bucket.className = 'bucket';
+                bucket.style.left = `${i * bucketWidth}px`;
+                bucket.style.width = `${bucketWidth}px`;
+                bucket.dataset.multiplier = config.multipliers[i];
+                bucket.dataset.index = i;
+                bucket.textContent = `${config.multipliers[i]}x`;
+                elements.board.appendChild(bucket);
             }
         }
 
-        // Create the paytable
-        function createPaytable() {
-            elements.paytable.innerHTML = '';
+        // Create the multipliers display
+        function createMultipliers() {
+            elements.multipliers.innerHTML = '';
             
-            config.symbols.forEach(symbol => {
+            config.multipliers.forEach((multiplier, index) => {
                 const item = document.createElement('div');
-                item.className = 'paytable-item';
+                item.className = 'multiplier-item';
+                item.dataset.index = index;
                 
-                const icon = document.createElement('div');
-                icon.textContent = symbol.icon;
-                icon.style.fontSize = '2rem';
-                icon.style.marginBottom = '0.5rem';
+                const value = document.createElement('div');
+                value.textContent = `${multiplier}x`;
+                value.style.fontSize = '1.5rem';
+                value.style.marginBottom = '0.3rem';
                 
-                const name = document.createElement('div');
-                name.textContent = symbol.name;
-                name.style.fontWeight = 'bold';
-                name.style.marginBottom = '0.3rem';
+                const position = document.createElement('div');
+                position.textContent = `Slot ${index + 1}`;
                 
-                const payout = document.createElement('div');
-                payout.textContent = `${symbol.multiplier}x Bet`;
-                
-                item.appendChild(icon);
-                item.appendChild(name);
-                item.appendChild(payout);
-                elements.paytable.appendChild(item);
+                item.appendChild(value);
+                item.appendChild(position);
+                elements.multipliers.appendChild(item);
             });
         }
 
-    function spin() {
-    if (state.spinning || state.currentBet <= 0 || state.currentBet > state.balance) return;
-
-    state.spinning = true;
-    state.balance -= state.currentBet;
-    updateUI();
-
-    elements.spinBtn.disabled = true; // Disable button during spin
-    elements.chipButtons.forEach(btn => btn.classList.remove('active'));
-
-    const results = [];
-    const symbolHeight = 180; // Match this with your CSS
-    const totalSymbols = config.symbolCount;
-
-    state.reels.forEach((reel, index) => {
-        setTimeout(() => {
-            // Ensure symbols don't disappear
-            reel.style.overflow = "visible";
-
-            // Reset before animation
-            reel.style.transition = 'none';
-            reel.style.transform = 'translateY(0px)';
-            void reel.offsetHeight; // Force reflow
-
-            // Add smooth transition
-            reel.style.transition = 'transform 3s ease-out';
-
-            // Calculate random stop position (keeping it within visible bounds)
-            const extraSpins = Math.floor(Math.random() * 5) + 3; // 3-7 extra spins
-            const stopIndex = Math.floor(Math.random() * totalSymbols);
-            const stopPosition = -(stopIndex * symbolHeight) + (symbolHeight * 1.5); // Centered
-
-            // Total spin distance
-            const totalSpinDistance = -(extraSpins * totalSymbols * symbolHeight) + stopPosition;
-            reel.style.transform = `translateY(${totalSpinDistance}px)`;
-
-            // Store result and check win
-            setTimeout(() => {
-                results[index] = reel.children[stopIndex]?.dataset.symbol || "❓";
-
-                if (results.length === config.reelCount && !results.includes(undefined)) {
-                    checkWin(results);
-                }
-            }, 3000); // Matches animation duration
-        }, index * 300); // Stagger start for realism
-    });
-}
-
-
-
-
-        // Check for winning combinations
-        function checkWin(results) {
-            state.spinning = false;
-            elements.spinBtn.disabled = false;
+        // Drop a chip
+        function dropChip() {
+            if (state.currentBet <= 0 || state.currentBet > state.balance) return;
+            
+            if (state.activeChips >= config.maxChips) {
+                alert(`Maximum ${config.maxChips} chips allowed at once!`);
+                return;
+            }
+            
+            state.balance -= state.currentBet;
+            state.activeChips++;
             updateUI();
             
-            // Check if all symbols are the same
-            const allSame = results.every(symbol => symbol === results[0]);
+            const boardWidth = elements.board.offsetWidth;
+            const startX = boardWidth / 2 + (Math.random() - 0.5) * 30;
             
-            if (allSame) {
-                const symbol = config.symbols.find(s => s.name === results[0]);
-                const winAmount = state.currentBet * symbol.multiplier;
-                state.balance += winAmount;
-                
-                // Show win animation
-                elements.winMessage.textContent = `${symbol.name} WIN!`;
-                elements.winAmount.textContent = `$${winAmount}`;
-                elements.winAnimation.classList.add('show');
-                
-                setTimeout(() => {
-                    elements.winAnimation.classList.remove('show');
-                }, 2000);
-                
-                updateUI();
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.style.left = `${startX}px`;
+            chip.style.top = '30px';
+            chip.style.width = `${config.chipSize}px`;
+            chip.style.height = `${config.chipSize}px`;
+            elements.board.appendChild(chip);
+            
+            state.chips.push({
+                element: chip,
+                x: startX,
+                y: 30,
+                vx: (Math.random() - 0.5) * 4, // Faster horizontal movement
+                vy: 0,
+                gravity: 0.25, // Increased gravity for faster falling
+                friction: 0.96, // Less friction for faster movement
+                active: true
+            });
+            
+            if (!state.animationRunning) {
+                state.animationRunning = true;
+                animateChips();
             }
+        }
+
+        // Drop multiple chips
+        function dropMultipleChips(count) {
+            if (state.currentBet <= 0 || state.currentBet > state.balance) return;
+            
+            const totalCost = state.currentBet * count;
+            if (totalCost > state.balance) {
+                alert("Not enough balance for that many chips!");
+                return;
+            }
+            
+            if (state.activeChips + count > config.maxChips) {
+                alert(`Maximum ${config.maxChips} chips allowed at once!`);
+                return;
+            }
+            
+            state.dropQueue = count;
+            processDropQueue();
+        }
+
+        // Process the drop queue
+        function processDropQueue() {
+            if (state.dropQueue > 0) {
+                dropChip();
+                state.dropQueue--;
+                setTimeout(processDropQueue, config.chipDropDelay);
+            }
+        }
+
+        // Highlight multiplier
+        function highlightMultiplier(index) {
+            // Highlight bucket
+            const bucket = document.querySelector(`.bucket[data-index="${index}"]`);
+            bucket.classList.add('highlight');
+            
+            // Highlight multiplier in display
+            const multiplierItem = document.querySelector(`.multiplier-item[data-index="${index}"]`);
+            multiplierItem.classList.add('highlight');
+            
+            // Remove highlight after duration
+            setTimeout(() => {
+                bucket.classList.remove('highlight');
+                multiplierItem.classList.remove('highlight');
+            }, config.highlightDuration);
+        }
+
+        // Animate all active chips
+        function animateChips() {
+            let activeChips = 0;
+            const collisionThreshold = (config.pegSize + config.chipSize) / 2;
+            
+            state.chips.forEach(chip => {
+                if (!chip.active) return;
+                
+                // Apply gravity (increased for faster falling)
+                chip.vy += chip.gravity;
+                
+                // Update position
+                chip.x += chip.vx;
+                chip.y += chip.vy;
+                
+                // Apply friction (reduced for faster movement)
+                chip.vx *= chip.friction;
+                chip.vy *= chip.friction;
+                
+                // Check for collisions with pegs
+                const pegs = document.querySelectorAll('.peg');
+                pegs.forEach(peg => {
+                    const pegRect = peg.getBoundingClientRect();
+                    const boardRect = elements.board.getBoundingClientRect();
+                    
+                    const pegX = pegRect.left - boardRect.left + pegRect.width/2;
+                    const pegY = pegRect.top - boardRect.top + pegRect.height/2;
+                    
+                    const dx = chip.x - pegX;
+                    const dy = chip.y - pegY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < collisionThreshold) {
+                        const angle = Math.atan2(dy, dx);
+                        const speed = Math.sqrt(chip.vx * chip.vx + chip.vy * chip.vy) * 0.85;
+                        
+                        chip.vx = Math.cos(angle) * speed;
+                        chip.vy = Math.sin(angle) * speed;
+                        
+                        chip.vx += (Math.random() - 0.5) * 1.5;
+                    }
+                });
+                
+                // Check for bucket collision
+                const buckets = document.querySelectorAll('.bucket');
+                buckets.forEach(bucket => {
+                    const bucketRect = bucket.getBoundingClientRect();
+                    const boardRect = elements.board.getBoundingClientRect();
+                    
+                    const bucketLeft = bucketRect.left - boardRect.left;
+                    const bucketRight = bucketRect.right - boardRect.left;
+                    const bucketTop = bucketRect.top - boardRect.top;
+                    
+                    if (chip.y + config.chipSize/2 >= bucketTop && 
+                        chip.x >= bucketLeft && 
+                        chip.x <= bucketRight) {
+                        
+                        const multiplier = parseFloat(bucket.dataset.multiplier);
+                        const index = bucket.dataset.index;
+                        const winAmount = Math.floor(state.currentBet * multiplier);
+                        state.balance += winAmount;
+                        
+                        highlightMultiplier(index);
+                        
+                        if (winAmount >= state.currentBet * 2) {
+                            showWin(winAmount);
+                        }
+                        
+                        chip.active = false;
+                        chip.element.remove();
+                        state.activeChips--;
+                        updateUI();
+                    }
+                });
+                
+                // Check if chip fell off bottom
+                if (chip.y > elements.board.offsetHeight + 20) {
+                    chip.active = false;
+                    chip.element.remove();
+                    state.activeChips--;
+                    updateUI();
+                }
+                
+                // Check wall collisions
+                if (chip.x < config.chipSize/2) {
+                    chip.x = config.chipSize/2;
+                    chip.vx *= -0.7;
+                } else if (chip.x > elements.board.offsetWidth - config.chipSize/2) {
+                    chip.x = elements.board.offsetWidth - config.chipSize/2;
+                    chip.vx *= -0.7;
+                }
+                
+                if (chip.active) {
+                    activeChips++;
+                    chip.element.style.left = `${chip.x}px`;
+                    chip.element.style.top = `${chip.y}px`;
+                }
+            });
+            
+            // Clean up inactive chips
+            state.chips = state.chips.filter(chip => chip.active);
+            
+            // Continue animation if there are active chips
+            if (activeChips > 0) {
+                requestAnimationFrame(animateChips);
+            } else {
+                state.animationRunning = false;
+            }
+        }
+
+        // Show win animation
+        function showWin(amount) {
+            elements.winMessage.textContent = "WINNER!";
+            elements.winAmount.textContent = `$${amount}`;
+            elements.winAnimation.classList.add('show');
+            
+            setTimeout(() => {
+                elements.winAnimation.classList.remove('show');
+            }, 2000);
         }
 
         // Place a bet
         function placeBet(amount) {
-            if (state.spinning) return;
-            
             amount = parseInt(amount);
             state.currentBet = amount;
             
-            // Highlight selected chip
-            elements.chipButtons.forEach(btn => {
+            elements.betButtons.forEach(btn => {
                 btn.classList.remove('active');
                 if (parseInt(btn.dataset.value) === amount) {
                     btn.classList.add('active');
@@ -528,24 +704,35 @@
             elements.balance.textContent = state.balance;
             elements.currentBet.textContent = state.currentBet;
             
-            // Enable/disable spin button
-            elements.spinBtn.disabled = state.currentBet <= 0 || state.currentBet > state.balance || state.spinning;
-            
-            // Disable chips that are higher than current balance
-            elements.chipButtons.forEach(btn => {
-                const chipValue = parseInt(btn.dataset.value);
-                btn.disabled = chipValue > state.balance;
+            elements.betButtons.forEach(btn => {
+                const betValue = parseInt(btn.dataset.value);
+                btn.disabled = betValue > state.balance;
             });
         }
 
         // Set up event listeners
         function setupEventListeners() {
-            // Spin button
-            elements.spinBtn.addEventListener('click', spin);
+            elements.dropBtn.addEventListener('click', () => {
+                if (state.dropQueue === 0) dropChip();
+            });
             
-            // Chip buttons
-            elements.chipButtons.forEach(button => {
+            elements.dropMultiBtn.addEventListener('click', () => {
+                dropMultipleChips(10);
+            });
+            
+            elements.betButtons.forEach(button => {
                 button.addEventListener('click', () => placeBet(button.dataset.value));
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (state.dropQueue === 0) dropChip();
+                }
+                if (e.code === 'Enter') {
+                    e.preventDefault();
+                    dropMultipleChips(10);
+                }
             });
         }
 
