@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slot Machine</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0a5c36;
+            --secondary: #f8c537;
+            --dark-green: #0a3b22;
+            --light-green: #1a7a4a;
+            --red: #e74c3c;
+            --black: #222;
+            --white: #f9f9f9;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--primary);
+            color: var(--white);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        
+        header {
+            background-color: var(--dark-green);
+            padding: 1rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+        
+        h1 {
+            color: var(--secondary);
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .balance-display {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--secondary);
+            color: var(--black);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .game-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        /* Slot Machine Styles */
+        .slot-machine {
+            background-color: var(--dark-green);
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .reels-container {
+            display: flex;
+            gap: 15px;
+            margin: 2rem 0;
+            perspective: 1000px;
+        }
+        
+        .reel {
+            width: 120px;
+            height: 180px;
+            background-color: var(--light-green);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+        }
+        
+        .reel-inner {
+            position: absolute;
+            width: 100%;
+            transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        
+        .slot-symbol {
+            height: 180px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5rem;
+            color: var(--white);
+        }
+        
+        .slot-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
+        
+        .bet-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .chip {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background-color: var(--secondary);
+            color: var(--black);
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .chip:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .chip.active {
+            transform: scale(1.1);
+            background-color: var(--red);
+            color: var(--white);
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.7);
+        }
+        
+        .spin-btn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            background-color: var(--secondary);
+            color: var(--black);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .spin-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.3);
+        }
+        
+        .spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .paytable {
+            background-color: var(--dark-green);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+        
+        .paytable h2 {
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .paytable-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        
+        .paytable-item {
+            background-color: var(--light-green);
+            padding: 0.8rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .win-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        
+        .win-animation.show {
+            opacity: 1;
+        }
+        
+        .win-content {
+            background-color: var(--secondary);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            color: var(--black);
+            font-size: 2rem;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .reels-container {
+                gap: 10px;
+            }
+            
+            .reel {
+                width: 90px;
+                height: 135px;
+            }
+            
+            .slot-symbol {
+                height: 135px;
+                font-size: 2.5rem;
+            }
+            
+            .spin-btn {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+            
+            .chip {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Slot Machine</h1>
+        <div class="balance-display">
+            <i class="fas fa-coins"></i>
+            <span id="balance">10000</span>
+        </div>
+    </header>
+    
+    <div class="game-container">
+        <div class="slot-machine">
+            <div class="reels-container" id="reels">
+                <!-- Reels will be generated by JavaScript -->
+            </div>
+            
+            <div class="slot-controls">
+                <div class="bet-controls">
+                    <button class="chip chip-5" data-value="5">$5</button>
+                    <button class="chip chip-10" data-value="10">$10</button>
+                    <button class="chip chip-25" data-value="25">$25</button>
+                    <button class="chip chip-50" data-value="50">$50</button>
+                    <button class="chip chip-100" data-value="100">$100</button>
+                    <button class="chip chip-500" data-value="500">$500</button>
+                    <button class="chip chip-1000" data-value="1000">$1000</button>
+                </div>
+                
+                <div class="bet-display">
+                    Current Bet: $<span id="current-bet">0</span>
+                </div>
+                
+                <button id="spin-btn" class="spin-btn" disabled>
+                    <i class="fas fa-redo"></i> SPIN
+                </button>
+            </div>
+            
+            <div class="paytable">
+                <h2>Paytable</h2>
+                <div class="paytable-grid" id="paytable">
+                    <!-- Paytable will be generated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="win-animation" id="win-animation">
+        <div class="win-content">
+            <div id="win-message">YOU WON!</div>
+            <div id="win-amount">$0</div>
+        </div>
+    </div>
+
+    <script>
+        // Game configuration
+        const config = {
+            initialBalance: 10000,
+            symbols: [
+                { icon: '🍒', name: 'Cherry', multiplier: 2 },
+                { icon: '🍋', name: 'Lemon', multiplier: 3 },
+                { icon: '🍊', name: 'Orange', multiplier: 4 },
+                { icon: '🍇', name: 'Grape', multiplier: 5 },
+                { icon: '🍉', name: 'Watermelon', multiplier: 7 },
+                { icon: '💰', name: 'Money Bag', multiplier: 10 },
+                { icon: '7️⃣', name: 'Seven', multiplier: 15 },
+                { icon: '⭐', name: 'Star', multiplier: 20 }
+            ],
+            reelCount: 3,
+            spinDuration: 3000,
+            symbolCount: 8
+        };
+
+        // Game state
+        const state = {
+            balance: config.initialBalance,
+            currentBet: 0,
+            spinning: false,
+            reels: []
+        };
+
+        // DOM elements
+        const elements = {
+            balance: document.getElementById('balance'),
+            currentBet: document.getElementById('current-bet'),
+            spinBtn: document.getElementById('spin-btn'),
+            reelsContainer: document.getElementById('reels'),
+            paytable: document.getElementById('paytable'),
+            winAnimation: document.getElementById('win-animation'),
+            winMessage: document.getElementById('win-message'),
+            winAmount: document.getElementById('win-amount'),
+            chipButtons: document.querySelectorAll('.chip')
+        };
+
+        // Initialize the game
+        function init() {
+            createReels();
+            createPaytable();
+            updateUI();
+            setupEventListeners();
+        }
+
+        // Create the slot reels
+        function createReels() {
+            elements.reelsContainer.innerHTML = '';
+            
+            for (let i = 0; i < config.reelCount; i++) {
+                const reel = document.createElement('div');
+                reel.className = 'reel';
+                
+                const reelInner = document.createElement('div');
+                reelInner.className = 'reel-inner';
+                
+                // Create symbols for this reel
+                for (let j = 0; j < config.symbolCount; j++) {
+                    const symbol = document.createElement('div');
+                    symbol.className = 'slot-symbol';
+                    const randomSymbol = config.symbols[Math.floor(Math.random() * config.symbols.length)];
+                    symbol.textContent = randomSymbol.icon;
+                    symbol.dataset.symbol = randomSymbol.name;
+                    reelInner.appendChild(symbol);
+                }
+                
+                // Add one more symbol at the end to make the loop seamless
+                const firstSymbol = reelInner.children[0].cloneNode(true);
+                reelInner.appendChild(firstSymbol);
+                
+                reel.appendChild(reelInner);
+                elements.reelsContainer.appendChild(reel);
+                state.reels.push(reelInner);
+            }
+        }
+
+        // Create the paytable
+        function createPaytable() {
+            elements.paytable.innerHTML = '';
+            
+            config.symbols.forEach(symbol => {
+                const item = document.createElement('div');
+                item.className = 'paytable-item';
+                
+                const icon = document.createElement('div');
+                icon.textContent = symbol.icon;
+                icon.style.fontSize = '2rem';
+                icon.style.marginBottom = '0.5rem';
+                
+                const name = document.createElement('div');
+                name.textContent = symbol.name;
+                name.style.fontWeight = 'bold';
+                name.style.marginBottom = '0.3rem';
+                
+                const payout = document.createElement('div');
+                payout.textContent = `${symbol.multiplier}x Bet`;
+                
+                item.appendChild(icon);
+                item.appendChild(name);
+                item.appendChild(payout);
+                elements.paytable.appendChild(item);
+            });
+        }
+
+        // Spin the reels
+        function spin() {
+            if (state.spinning || state.currentBet <= 0 || state.currentBet > state.balance) return;
+            
+            state.spinning = true;
+            state.balance -= state.currentBet;
+            updateUI();
+            
+            // Disable spin button during spin
+            elements.spinBtn.disabled = true;
+            
+            // Reset active chip
+            elements.chipButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Spin each reel with slight delay between them
+            const results = [];
+            
+            state.reels.forEach((reel, index) => {
+                setTimeout(() => {
+                    // Calculate random position that will land a symbol in the middle
+                    const randomOffset = Math.floor(Math.random() * config.symbolCount);
+                    const randomPosition = -(randomOffset * 180 + 90); // Add 90px to center the symbol
+                    
+                    reel.style.transform = `translateY(${randomPosition}px)`;
+                    
+                    // Store the middle symbol as result
+                    setTimeout(() => {
+                        const resultIndex = randomOffset % config.symbolCount;
+                        const resultSymbol = reel.children[resultIndex].dataset.symbol;
+                        results.push(resultSymbol);
+                        
+                        // Check for win when all reels stopped
+                        if (results.length === config.reelCount) {
+                            checkWin(results);
+                        }
+                    }, config.spinDuration);
+                }, index * 200);
+            });
+        }
+
+        // Check for winning combinations
+        function checkWin(results) {
+            state.spinning = false;
+            elements.spinBtn.disabled = false;
+            updateUI();
+            
+            // Check if all symbols are the same
+            const allSame = results.every(symbol => symbol === results[0]);
+            
+            if (allSame) {
+                const symbol = config.symbols.find(s => s.name === results[0]);
+                const winAmount = state.currentBet * symbol.multiplier;
+                state.balance += winAmount;
+                
+                // Show win animation
+                elements.winMessage.textContent = `${symbol.name} WIN!`;
+                elements.winAmount.textContent = `$${winAmount}`;
+                elements.winAnimation.classList.add('show');
+                
+                setTimeout(() => {
+                    elements.winAnimation.classList.remove('show');
+                }, 2000);
+                
+                updateUI();
+            }
+        }
+
+        // Place a bet
+        function placeBet(amount) {
+            if (state.spinning) return;
+            
+            amount = parseInt(amount);
+            state.currentBet = amount;
+            
+            // Highlight selected chip
+            elements.chipButtons.forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.value) === amount) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updateUI();
+        }
+
+        // Update the UI
+        function updateUI() {
+            elements.balance.textContent = state.balance;
+            elements.currentBet.textContent = state.currentBet;
+            
+            // Enable/disable spin button
+            elements.spinBtn.disabled = state.currentBet <= 0 || state.currentBet > state.balance || state.spinning;
+            
+            // Disable chips that are higher than current balance
+            elements.chipButtons.forEach(btn => {
+                const chipValue = parseInt(btn.dataset.value);
+                btn.disabled = chipValue > state.balance;
+            });
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Spin button
+            elements.spinBtn.addEventListener('click', spin);
+            
+            // Chip buttons
+            elements.chipButtons.forEach(button => {
+                button.addEventListener('click', () => placeBet(button.dataset.value));
+            });
+        }
+
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
