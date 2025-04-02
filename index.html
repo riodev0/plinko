@@ -430,45 +430,56 @@
             });
         }
 
-        // Spin the reels
-        function spin() {
-            if (state.spinning || state.currentBet <= 0 || state.currentBet > state.balance) return;
+     function spin() {
+    if (state.spinning || state.currentBet <= 0 || state.currentBet > state.balance) return;
+    
+    state.spinning = true;
+    state.balance -= state.currentBet;
+    updateUI();
+
+    // Disable spin button during spin
+    elements.spinBtn.disabled = true;
+
+    // Reset active chip
+    elements.chipButtons.forEach(btn => btn.classList.remove('active'));
+
+    const results = [];
+
+    state.reels.forEach((reel, index) => {
+        setTimeout(() => {
+            // Reset transform before starting spin
+            reel.style.transition = 'none';
+            reel.style.transform = 'translateY(0)';
+
+            // Force reflow for proper animation
+            void reel.offsetHeight;
+
+            // Set transition and animate spin
+            reel.style.transition = 'transform 4s cubic-bezier(0.1, 0.8, 0.1, 1)';
             
-            state.spinning = true;
-            state.balance -= state.currentBet;
-            updateUI();
-            
-            // Disable spin button during spin
-            elements.spinBtn.disabled = true;
-            
-            // Reset active chip
-            elements.chipButtons.forEach(btn => btn.classList.remove('active'));
-            
-            // Spin each reel with slight delay between them
-            const results = [];
-            
-            state.reels.forEach((reel, index) => {
-                setTimeout(() => {
-                    // Calculate random position that will land a symbol in the middle
-                    const randomOffset = Math.floor(Math.random() * config.symbolCount);
-                    const randomPosition = -(randomOffset * 180 + 90); // Add 90px to center the symbol
-                    
-                    reel.style.transform = `translateY(${randomPosition}px)`;
-                    
-                    // Store the middle symbol as result
-                    setTimeout(() => {
-                        const resultIndex = randomOffset % config.symbolCount;
-                        const resultSymbol = reel.children[resultIndex].dataset.symbol;
-                        results.push(resultSymbol);
-                        
-                        // Check for win when all reels stopped
-                        if (results.length === config.reelCount) {
-                            checkWin(results);
-                        }
-                    }, config.spinDuration);
-                }, index * 200);
-            });
-        }
+            // Spin multiple times before landing
+            const extraSpins = Math.floor(Math.random() * 5) + 3; // 3 to 7 extra full spins
+            const symbolHeight = 180; // Height of one symbol
+            const randomOffset = Math.floor(Math.random() * config.symbolCount);
+            const finalPosition = -(randomOffset * symbolHeight);
+            const totalSpinDistance = -(extraSpins * config.symbolCount * symbolHeight) + finalPosition;
+
+            reel.style.transform = `translateY(${totalSpinDistance}px)`;
+
+            // Store the middle symbol as result
+            setTimeout(() => {
+                const resultSymbol = reel.children[randomOffset].dataset.symbol;
+                results.push(resultSymbol);
+
+                // Check for win when all reels stopped
+                if (results.length === config.reelCount) {
+                    checkWin(results);
+                }
+            }, 4000); // Match the transition duration
+        }, index * 300); // Slight delay between reels
+    });
+}
+
 
         // Check for winning combinations
         function checkWin(results) {
