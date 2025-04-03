@@ -46,21 +46,6 @@
             font-size: 2.5rem;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
-        
-        .balance-display {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: var(--secondary);
-            color: var(--black);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
 
         /* Account Dropdown Styles */
         .account-menu {
@@ -128,6 +113,21 @@
         .logout-btn:hover {
             background-color: var(--red);
             color: var(--white);
+        }
+        
+        .balance-display {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--secondary);
+            color: var(--black);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .game-container {
@@ -380,20 +380,20 @@
 <body>
     <header>
         <div class="account-menu">
-            <button class="account-btn">
+            <button class="account-btn" id="account-btn">
                 <i class="fas fa-user"></i>
             </button>
-            <div class="account-dropdown">
+            <div class="account-dropdown" id="account-dropdown">
                 <div class="account-info">
                     <span id="username-display">Guest</span>
                 </div>
-                <button class="logout-btn">Logout</button>
+                <button class="logout-btn" id="logout-btn">Logout</button>
             </div>
         </div>
         <h1>Plinko Game</h1>
         <div class="balance-display">
             <i class="fas fa-coins"></i>
-            <span id="balance">10000</span>
+            <span id="balance">0</span>
         </div>
     </header>
     
@@ -444,10 +444,31 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+
     <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDfK_HayFBawYzgIcGXQsQ4ynyCrVHHL8A",
+            authDomain: "tbgames-d6995.firebaseapp.com",
+            projectId: "tbgames-d6995",
+            storageBucket: "tbgames-d6995.appspot.com",
+            messagingSenderId: "578117532273",
+            appId: "1:578117532273:web:3e52426b147f1c7e5af9d0",
+            measurementId: "G-VWLDSR92KV"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
         // Game configuration
         const config = {
-            initialBalance: 10000,
+            initialBalance: 1000,
             pegRows: 15,
             pegCols: 10,
             pegSpacing: 32,
@@ -462,13 +483,14 @@
 
         // Game state
         const state = {
-            balance: config.initialBalance,
+            balance: 0,
             currentBet: 0,
             activeChips: 0,
             chips: [],
             animationRunning: false,
             dropQueue: 0,
-            username: "Guest" // Added username to state
+            user: null,
+            userData: null
         };
 
         // DOM elements
@@ -484,24 +506,88 @@
             winAmount: document.getElementById('win-amount'),
             betButtons: document.querySelectorAll('.bet-btn'),
             // Account elements
-            accountBtn: document.querySelector('.account-btn'),
-            accountDropdown: document.querySelector('.account-dropdown'),
+            accountBtn: document.getElementById('account-btn'),
+            accountDropdown: document.getElementById('account-dropdown'),
             usernameDisplay: document.getElementById('username-display'),
-            logoutBtn: document.querySelector('.logout-btn')
+            logoutBtn: document.getElementById('logout-btn')
         };
 
         // Initialize the game
         function init() {
             createBoard();
             createMultipliers();
-            updateUI();
             setupEventListeners();
-            updateAccountDisplay();
+            initAuth();
+        }
+
+        // Initialize authentication
+        function initAuth() {
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // User is signed in
+                    state.user = user;
+                    await loadUserData(user.uid);
+                    updateAccountDisplay();
+                    updateUI();
+                } else {
+                    // No user signed in
+                    state.user = null;
+                    state.userData = null;
+                    state.balance = 0;
+                    updateAccountDisplay();
+                    updateUI();
+                    // Redirect to login if not on login page
+                    if (!window.location.pathname.includes('login.html')) {
+                        window.location.href = 'login.html';
+                    }
+                }
+            });
+        }
+
+        // Load user data from Firestore
+        async function loadUserData(userId) {
+            try {
+                const doc = await db.collection('users').doc(userId).get();
+                if (doc.exists) {
+                    state.userData = doc.data();
+                    state.balance = state.userData.balance || config.initialBalance;
+                } else {
+                    // Create new user document if it doesn't exist
+                    await db.collection('users').doc(userId).set({
+                        balance: config.initialBalance,
+                        username: state.user.email.split('@')[0],
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    state.balance = config.initialBalance;
+                }
+            } catch (error) {
+                console.error("Error loading user data:", error);
+            }
+        }
+
+        // Update user balance in Firestore
+        async function updateUserBalance(newBalance) {
+            if (!state.user) return;
+            
+            try {
+                await db.collection('users').doc(state.user.uid).update({
+                    balance: newBalance
+                });
+                state.balance = newBalance;
+                updateUI();
+            } catch (error) {
+                console.error("Error updating balance:", error);
+            }
         }
 
         // Update account display
         function updateAccountDisplay() {
-            elements.usernameDisplay.textContent = state.username;
+            if (state.user) {
+                const username = state.user.email.split('@')[0];
+                elements.usernameDisplay.textContent = username;
+            } else {
+                elements.usernameDisplay.textContent = "Guest";
+            }
         }
 
         // Create the Plinko board with pegs and buckets
@@ -570,6 +656,11 @@
 
         // Drop a chip
         function dropChip() {
+            if (!state.user) {
+                alert("Please login to play");
+                return;
+            }
+            
             if (state.currentBet <= 0 || state.currentBet > state.balance) return;
             
             if (state.activeChips >= config.maxChips) {
@@ -577,9 +668,11 @@
                 return;
             }
             
-            state.balance -= state.currentBet;
+            // Deduct bet from balance immediately
+            const newBalance = state.balance - state.currentBet;
+            updateUserBalance(newBalance);
+            
             state.activeChips++;
-            updateUI();
             
             const boardWidth = elements.board.offsetWidth;
             const startX = boardWidth / 2 + (Math.random() - 0.5) * 30;
@@ -611,6 +704,11 @@
 
         // Drop multiple chips
         function dropMultipleChips(count) {
+            if (!state.user) {
+                alert("Please login to play");
+                return;
+            }
+            
             if (state.currentBet <= 0 || state.currentBet > state.balance) return;
             
             const totalCost = state.currentBet * count;
@@ -704,7 +802,10 @@
                         const multiplier = parseFloat(bucket.dataset.multiplier);
                         const index = bucket.dataset.index;
                         const winAmount = Math.floor(state.currentBet * multiplier);
-                        state.balance += winAmount;
+                        
+                        // Update balance with winnings
+                        const newBalance = state.balance + winAmount;
+                        updateUserBalance(newBalance);
                         
                         highlightMultiplier(index);
                         
@@ -715,7 +816,6 @@
                         chip.active = false;
                         chip.element.remove();
                         state.activeChips--;
-                        updateUI();
                     }
                 });
                 
@@ -723,7 +823,6 @@
                     chip.active = false;
                     chip.element.remove();
                     state.activeChips--;
-                    updateUI();
                 }
                 
                 if (chip.x < config.chipSize/2) {
@@ -787,6 +886,20 @@
             });
         }
 
+        // Handle logout
+        function handleLogout() {
+            auth.signOut().then(() => {
+                state.user = null;
+                state.userData = null;
+                state.balance = 0;
+                updateAccountDisplay();
+                updateUI();
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error("Logout error:", error);
+            });
+        }
+
         // Set up event listeners
         function setupEventListeners() {
             // Account dropdown toggle
@@ -796,11 +909,7 @@
             });
             
             // Logout button
-            elements.logoutBtn.addEventListener('click', () => {
-                state.username = "Guest";
-                updateAccountDisplay();
-                elements.accountDropdown.classList.remove('show');
-            });
+            elements.logoutBtn.addEventListener('click', handleLogout);
             
             // Close dropdown when clicking outside
             document.addEventListener('click', () => {
