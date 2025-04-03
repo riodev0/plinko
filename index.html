@@ -61,6 +61,74 @@
             align-items: center;
             gap: 5px;
         }
+
+        /* Account Dropdown Styles */
+        .account-menu {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+
+        .account-btn {
+            background-color: var(--secondary);
+            color: var(--black);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .account-btn:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .account-dropdown {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            background-color: var(--dark-green);
+            border-radius: 8px;
+            padding: 1rem;
+            width: 200px;
+            box-shadow: var(--shadow);
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .account-dropdown.show {
+            display: flex;
+        }
+
+        .account-info {
+            padding: 0.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--light-green);
+        }
+
+        .logout-btn {
+            padding: 0.5rem;
+            background-color: var(--secondary);
+            color: var(--black);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background-color: var(--red);
+            color: var(--white);
+        }
         
         .game-container {
             max-width: 800px;
@@ -311,6 +379,17 @@
 </head>
 <body>
     <header>
+        <div class="account-menu">
+            <button class="account-btn">
+                <i class="fas fa-user"></i>
+            </button>
+            <div class="account-dropdown">
+                <div class="account-info">
+                    <span id="username-display">Guest</span>
+                </div>
+                <button class="logout-btn">Logout</button>
+            </div>
+        </div>
         <h1>Plinko Game</h1>
         <div class="balance-display">
             <i class="fas fa-coins"></i>
@@ -388,7 +467,8 @@
             activeChips: 0,
             chips: [],
             animationRunning: false,
-            dropQueue: 0
+            dropQueue: 0,
+            username: "Guest" // Added username to state
         };
 
         // DOM elements
@@ -402,7 +482,12 @@
             winAnimation: document.getElementById('win-animation'),
             winMessage: document.getElementById('win-message'),
             winAmount: document.getElementById('win-amount'),
-            betButtons: document.querySelectorAll('.bet-btn')
+            betButtons: document.querySelectorAll('.bet-btn'),
+            // Account elements
+            accountBtn: document.querySelector('.account-btn'),
+            accountDropdown: document.querySelector('.account-dropdown'),
+            usernameDisplay: document.getElementById('username-display'),
+            logoutBtn: document.querySelector('.logout-btn')
         };
 
         // Initialize the game
@@ -411,6 +496,12 @@
             createMultipliers();
             updateUI();
             setupEventListeners();
+            updateAccountDisplay();
+        }
+
+        // Update account display
+        function updateAccountDisplay() {
+            elements.usernameDisplay.textContent = state.username;
         }
 
         // Create the Plinko board with pegs and buckets
@@ -505,10 +596,10 @@
                 element: chip,
                 x: startX,
                 y: 30,
-                vx: (Math.random() - 0.5) * 4, // Faster horizontal movement
+                vx: (Math.random() - 0.5) * 4,
                 vy: 0,
-                gravity: 0.25, // Increased gravity for faster falling
-                friction: 0.96, // Less friction for faster movement
+                gravity: 0.25,
+                friction: 0.96,
                 active: true
             });
             
@@ -548,15 +639,12 @@
 
         // Highlight multiplier
         function highlightMultiplier(index) {
-            // Highlight bucket
             const bucket = document.querySelector(`.bucket[data-index="${index}"]`);
             bucket.classList.add('highlight');
             
-            // Highlight multiplier in display
             const multiplierItem = document.querySelector(`.multiplier-item[data-index="${index}"]`);
             multiplierItem.classList.add('highlight');
             
-            // Remove highlight after duration
             setTimeout(() => {
                 bucket.classList.remove('highlight');
                 multiplierItem.classList.remove('highlight');
@@ -571,18 +659,12 @@
             state.chips.forEach(chip => {
                 if (!chip.active) return;
                 
-                // Apply gravity (increased for faster falling)
                 chip.vy += chip.gravity;
-                
-                // Update position
                 chip.x += chip.vx;
                 chip.y += chip.vy;
-                
-                // Apply friction (reduced for faster movement)
                 chip.vx *= chip.friction;
                 chip.vy *= chip.friction;
                 
-                // Check for collisions with pegs
                 const pegs = document.querySelectorAll('.peg');
                 pegs.forEach(peg => {
                     const pegRect = peg.getBoundingClientRect();
@@ -606,7 +688,6 @@
                     }
                 });
                 
-                // Check for bucket collision
                 const buckets = document.querySelectorAll('.bucket');
                 buckets.forEach(bucket => {
                     const bucketRect = bucket.getBoundingClientRect();
@@ -638,7 +719,6 @@
                     }
                 });
                 
-                // Check if chip fell off bottom
                 if (chip.y > elements.board.offsetHeight + 20) {
                     chip.active = false;
                     chip.element.remove();
@@ -646,7 +726,6 @@
                     updateUI();
                 }
                 
-                // Check wall collisions
                 if (chip.x < config.chipSize/2) {
                     chip.x = config.chipSize/2;
                     chip.vx *= -0.7;
@@ -662,10 +741,8 @@
                 }
             });
             
-            // Clean up inactive chips
             state.chips = state.chips.filter(chip => chip.active);
             
-            // Continue animation if there are active chips
             if (activeChips > 0) {
                 requestAnimationFrame(animateChips);
             } else {
@@ -712,6 +789,25 @@
 
         // Set up event listeners
         function setupEventListeners() {
+            // Account dropdown toggle
+            elements.accountBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                elements.accountDropdown.classList.toggle('show');
+            });
+            
+            // Logout button
+            elements.logoutBtn.addEventListener('click', () => {
+                state.username = "Guest";
+                updateAccountDisplay();
+                elements.accountDropdown.classList.remove('show');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', () => {
+                elements.accountDropdown.classList.remove('show');
+            });
+            
+            // Game controls
             elements.dropBtn.addEventListener('click', () => {
                 if (state.dropQueue === 0) dropChip();
             });
@@ -736,50 +832,6 @@
             });
         }
 
-
-
-
-
-
-
-
-
-
-import { getUserData, updateBalance } from './auth.js';
-
-// When game loads
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    const userData = await getUserData(user.uid);
-    document.getElementById('balance').textContent = userData.balance;
-  }
-});
-
-// When player wins in Plinko
-async function handleWin(amount) {
-  const user = auth.currentUser;
-  if (user) {
-    const userData = await getUserData(user.uid);
-    const newBalance = userData.balance + amount;
-    
-    await updateBalance(user.uid, newBalance);
-    await updateGameStats(user.uid, 'plinko', 'wins');
-    
-    document.getElementById('balance').textContent = newBalance;
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-        
         // Initialize the game when DOM is loaded
         document.addEventListener('DOMContentLoaded', init);
     </script>
