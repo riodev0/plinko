@@ -736,6 +736,50 @@
             });
         }
 
+
+
+
+
+
+
+
+
+
+import { getUserData, updateBalance } from './auth.js';
+
+// When game loads
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    const userData = await getUserData(user.uid);
+    document.getElementById('balance').textContent = userData.balance;
+  }
+});
+
+// When player wins in Plinko
+async function handleWin(amount) {
+  const user = auth.currentUser;
+  if (user) {
+    const userData = await getUserData(user.uid);
+    const newBalance = userData.balance + amount;
+    
+    await updateBalance(user.uid, newBalance);
+    await updateGameStats(user.uid, 'plinko', 'wins');
+    
+    document.getElementById('balance').textContent = newBalance;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+        
         // Initialize the game when DOM is loaded
         document.addEventListener('DOMContentLoaded', init);
     </script>
