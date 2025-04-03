@@ -61,70 +61,6 @@
             align-items: center;
             gap: 5px;
         }
-
-        /* Account Menu Styles */
-        .account-menu-container {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 100;
-        }
-
-        .account-button {
-            background: var(--secondary);
-            color: var(--black);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        }
-
-        .account-button:hover {
-            background: var(--light-green);
-            color: var(--white);
-        }
-
-        .account-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: var(--dark-green);
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            width: 160px;
-            overflow: hidden;
-            display: none;
-            z-index: 101;
-        }
-
-        .dropdown-item {
-            padding: 0.8rem 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .dropdown-item:hover {
-            background: var(--light-green);
-        }
-
-        .dropdown-item i {
-            width: 20px;
-            text-align: center;
-        }
-
-        /* Show dropdown when active */
-        .account-menu-container.active .account-dropdown {
-            display: block;
-        }
         
         .game-container {
             max-width: 800px;
@@ -370,36 +306,11 @@
                 padding: 0.4rem 0.8rem;
                 font-size: 0.9rem;
             }
-
-            .account-button {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.9rem;
-            }
-
-            .account-dropdown {
-                width: 140px;
-            }
         }
     </style>
 </head>
 <body>
     <header>
-        <div class="account-menu-container" id="account-menu-container">
-            <div class="account-button" id="account-button">
-                <i class="fas fa-user-circle"></i>
-                <span id="username-display">Guest</span>
-                <i class="fas fa-caret-down"></i>
-            </div>
-            <div class="account-dropdown" id="account-dropdown">
-                <div class="dropdown-item" id="settings-btn">
-                    <i class="fas fa-cog"></i> Settings
-                </div>
-                <div class="dropdown-item" id="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </div>
-            </div>
-        </div>
-
         <h1>Plinko Game</h1>
         <div class="balance-display">
             <i class="fas fa-coins"></i>
@@ -491,13 +402,7 @@
             winAnimation: document.getElementById('win-animation'),
             winMessage: document.getElementById('win-message'),
             winAmount: document.getElementById('win-amount'),
-            betButtons: document.querySelectorAll('.bet-btn'),
-            accountMenuContainer: document.getElementById('account-menu-container'),
-            accountButton: document.getElementById('account-button'),
-            accountDropdown: document.getElementById('account-dropdown'),
-            usernameDisplay: document.getElementById('username-display'),
-            settingsBtn: document.getElementById('settings-btn'),
-            logoutBtn: document.getElementById('logout-btn')
+            betButtons: document.querySelectorAll('.bet-btn')
         };
 
         // Initialize the game
@@ -805,18 +710,6 @@
             });
         }
 
-        // Toggle account dropdown
-        function toggleAccountDropdown() {
-            elements.accountMenuContainer.classList.toggle('active');
-        }
-
-        // Close account dropdown when clicking outside
-        function closeAccountDropdown(e) {
-            if (!elements.accountMenuContainer.contains(e.target)) {
-                elements.accountMenuContainer.classList.remove('active');
-            }
-        }
-
         // Set up event listeners
         function setupEventListeners() {
             elements.dropBtn.addEventListener('click', () => {
@@ -831,21 +724,6 @@
                 button.addEventListener('click', () => placeBet(button.dataset.value));
             });
             
-            // Account menu event listeners
-            elements.accountButton.addEventListener('click', toggleAccountDropdown);
-            elements.settingsBtn.addEventListener('click', () => {
-                alert('Settings would open here');
-                elements.accountMenuContainer.classList.remove('active');
-            });
-            elements.logoutBtn.addEventListener('click', () => {
-                alert('Logout functionality would go here');
-                elements.accountMenuContainer.classList.remove('active');
-            });
-            
-            // Close dropdown when clicking outside
-            document.addEventListener('click', closeAccountDropdown);
-            
-            // Keyboard controls
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
@@ -858,44 +736,6 @@
             });
         }
 
-
-
-
-
-
-
-
-import { getUserData, updateBalance } from './auth.js';
-
-// When game loads
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    const userData = await getUserData(user.uid);
-    document.getElementById('balance').textContent = userData.balance;
-  }
-});
-
-// When player wins in Plinko
-async function handleWin(amount) {
-  const user = auth.currentUser;
-  if (user) {
-    const userData = await getUserData(user.uid);
-    const newBalance = userData.balance + amount;
-    
-    await updateBalance(user.uid, newBalance);
-    await updateGameStats(user.uid, 'plinko', 'wins');
-    
-    document.getElementById('balance').textContent = newBalance;
-  }
-}
-
-
-
-
-
-
-
-        
         // Initialize the game when DOM is loaded
         document.addEventListener('DOMContentLoaded', init);
     </script>
