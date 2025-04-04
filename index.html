@@ -175,6 +175,8 @@
             margin-bottom: 2rem;
             border: 1px solid var(--gray);
             flex-shrink: 0;
+            contain: strict;
+            will-change: transform;
         }
         
         .peg {
@@ -452,7 +454,7 @@
         let ballId = 0;
         let animationFrameId = null;
         let canDropBall = true;
-        const MAX_BALLS = 10; // Limit to prevent spamming
+        const MAX_BALLS = 10;
 
         // Multiplier tables
         const multiplierTables = {
@@ -488,12 +490,10 @@
             const boardWidth = plinkoBoard.clientWidth;
             const boardHeight = plinkoBoard.clientHeight;
             
-            // Clear existing pegs and buckets
             plinkoBoard.innerHTML = '';
             pegs = [];
             buckets = [];
             
-            // Create pegs in original layout
             const pegRows = 12;
             const pegCols = 8;
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
@@ -549,7 +549,8 @@
                 vx: (Math.random() - 0.5) * 2,
                 vy: 0,
                 radius: 7,
-                element: document.createElement('div')
+                element: document.createElement('div'),
+                active: true
             };
             
             ball.element.className = 'ball';
@@ -563,6 +564,8 @@
 
         // Update ball position
         function updateBall(ball) {
+            if (!ball.active) return null;
+
             const gravity = 0.2;
             const friction = 0.995;
             const bounce = 0.8;
@@ -578,21 +581,19 @@
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance < ball.radius + peg.radius) {
-                    // Collision detected
                     const angle = Math.atan2(dy, dx);
                     const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
                     
                     ball.vx = Math.cos(angle) * speed * bounce;
                     ball.vy = Math.sin(angle) * speed * bounce;
                     
-                    // Move ball out of collision
                     const overlap = ball.radius + peg.radius - distance;
-                    ball.x += Math.cos(angle) * overlap;
-                    ball.y += Math.sin(angle) * overlap;
+                    ball.x += Math.cos(angle) * overlap * 1.1;
+                    ball.y += Math.sin(angle) * overlap * 1.1;
                 }
             }
             
-            // Check collision with walls
+            // Wall collisions
             if (ball.x < ball.radius) {
                 ball.x = ball.radius;
                 ball.vx *= -bounce;
@@ -611,7 +612,7 @@
             
             // Check if ball reached bottom
             if (ball.y > plinkoBoard.clientHeight - 20) {
-                // Find which bucket the ball landed in
+                ball.active = false;
                 for (const bucket of buckets) {
                     if (ball.x >= bucket.x - bucket.width / 2 && ball.x < bucket.x + bucket.width / 2) {
                         return {
@@ -620,6 +621,7 @@
                         };
                     }
                 }
+                return { bucket: null, ball: ball };
             }
             
             return null;
@@ -646,50 +648,45 @@
             placeBetBtn.classList.remove('processing');
         }
 
-     // Replace your gameLoop function with this:
-function gameLoop() {
-    const completedBalls = [];
-    
-    // Update all balls (iterate backwards for safe removal)
-    for (let i = balls.length - 1; i >= 0; i--) {
-        const ball = balls[i];
-        const result = updateBall(ball);
-        
-        if (result) {
-            completedBalls.push(result);
-            // Remove ball from DOM and array immediately
-            if (ball.element.parentNode === plinkoBoard) {
-                plinkoBoard.removeChild(ball.element);
-            }
-            balls.splice(i, 1);
-        }
-    }
-    
-    // Process completed balls
-    for (const result of completedBalls) {
-        if (result.bucket) {
-            const multiplier = result.bucket.multiplier;
-            const winnings = currentBet * multiplier;
+        // Game loop
+        function gameLoop() {
+            const completedBalls = [];
             
-            lastWinEl.textContent = `${multiplier}x`;
-            addToHistory(multiplier);
-            updateBalance(winnings);
+            // Update all balls
+            for (let i = balls.length - 1; i >= 0; i--) {
+                const ball = balls[i];
+                const result = updateBall(ball);
+                
+                if (result && !ball.active) {
+                    completedBalls.push(result);
+                    balls.splice(i, 1);
+                }
+            }
+            
+            // Process completed balls
+            for (const result of completedBalls) {
+                if (result.bucket) {
+                    const multiplier = result.bucket.multiplier;
+                    const winnings = currentBet * multiplier;
+                    
+                    lastWinEl.textContent = `${multiplier}x`;
+                    addToHistory(multiplier);
+                    updateBalance(winnings);
+                }
+                
+                // Remove ball from DOM
+                if (result.ball.element.parentNode === plinkoBoard) {
+                    plinkoBoard.removeChild(result.ball.element);
+                }
+            }
+            
+            // Continue animation if there are active balls
+            if (balls.length > 0) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            } else {
+                cleanupBalls();
+            }
         }
-    }
-    
-    // Continue animation if there are balls
-    if (balls.length > 0) {
-        animationFrameId = requestAnimationFrame(gameLoop);
-    } else {
-        cleanupBalls();
-    }
-}
-
-// Add this to your CSS to prevent layout shifts:
-.plinko-board {
-    contain: strict;
-    will-change: transform;
-}
 
         // Add result to history
         function addToHistory(multiplier) {
@@ -705,35 +702,37 @@ function gameLoop() {
         }
 
         // Update user balance
-      async function updateBalance(winnings) {
-    try {
-        await db.runTransaction(async (transaction) => {
-            const userRef = db.collection('users').doc(currentUser.uid);
-            const doc = await transaction.get(userRef);
-            
-            if (!doc.exists) throw "Document does not exist!";
-            
-            const currentBalance = doc.data().balance || 0;
-            const newBalance = currentBalance + winnings;
-            transaction.update(userRef, { balance: newBalance });
-        });
-        
-        // Update local balance
-        userData.balance += winnings;
-        balanceEl.textContent = formatMoney(userData.balance);
-        
-        await db.collection('plinko_games').add({
-            bet: currentBet,
-            multiplier: winnings / currentBet,
-            payout: winnings,
-            riskLevel: currentRisk,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userId: currentUser.uid
-        });
-    } catch (error) {
-        console.error("Error updating balance:", error);
-    }
-}
+        async function updateBalance(winnings) {
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const userRef = db.collection('users').doc(currentUser.uid);
+                    const doc = await transaction.get(userRef);
+                    
+                    if (!doc.exists) throw "Document does not exist!";
+                    
+                    const currentBalance = doc.data().balance || 0;
+                    const newBalance = currentBalance + winnings;
+                    transaction.update(userRef, { balance: newBalance });
+                });
+                
+                // Update local balance
+                userData.balance += winnings;
+                balanceEl.textContent = formatMoney(userData.balance);
+                
+                // Save game result
+                await db.collection('plinko_games').add({
+                    bet: currentBet,
+                    multiplier: winnings / currentBet,
+                    payout: winnings,
+                    riskLevel: currentRisk,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userId: currentUser.uid
+                });
+            } catch (error) {
+                console.error("Error updating balance:", error);
+            }
+        }
+
         // Update risk level
         function updateRiskLevel(risk) {
             currentRisk = risk;
@@ -813,15 +812,14 @@ function gameLoop() {
             placeBetBtn.addEventListener('click', async () => {
                 if (!canDropBall) return;
                 
-                const betAmount = parseFloat(betAmountEl.value);
+                let betAmount = parseFloat(betAmountEl.value);
+                
+                // Validate bet amount
+                betAmount = Math.max(1, Math.min(userData.balance, betAmount));
+                betAmountEl.value = betAmount;
                 
                 if (isNaN(betAmount)) {
                     alert('Please enter a valid number');
-                    return;
-                }
-                
-                if (betAmount < 1) {
-                    alert('Minimum bet is 1');
                     return;
                 }
                 
@@ -836,10 +834,7 @@ function gameLoop() {
                 }
                 
                 try {
-                    // Clean up any existing balls first
                     cleanupBalls();
-                    
-                    // Visual feedback
                     placeBetBtn.classList.add('processing');
                     
                     // Deduct bet amount
@@ -850,94 +845,40 @@ function gameLoop() {
                     userData.balance -= betAmount;
                     balanceEl.textContent = formatMoney(userData.balance);
                     
-                    // Start game
                     currentBet = betAmount;
                     canDropBall = false;
                     placeBetBtn.disabled = true;
                     
-                    // Create and drop ball
                     createBall();
-                    
-                    // Start game loop
                     animationFrameId = requestAnimationFrame(gameLoop);
                 } catch (error) {
                     console.error("Error placing bet:", error);
-                    cleanupBalls(); // Clean up on error
+                    cleanupBalls();
                 }
             });
             
             // Quick bet buttons
-         // Replace your quick bet button click handler with this:
-document.querySelectorAll('.quick-bet').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const action = btn.getAttribute('data-action');
-        let newAmount = 0;
-        
-        switch(action) {
-            case 'half':
-                newAmount = Math.max(1, Math.floor(userData.balance / 2));
-                break;
-            case 'double':
-                const currentAmount = parseFloat(betAmountEl.value) || 0;
-                newAmount = Math.min(userData.balance, Math.max(1, currentAmount * 2));
-                break;
-            case 'max':
-                newAmount = Math.max(1, userData.balance);
-                break;
-        }
-        
-        betAmountEl.value = newAmount;
-    });
-});
-
-// Update your place bet click handler to ensure proper bet validation:
-placeBetBtn.addEventListener('click', async () => {
-    if (!canDropBall) return;
-    
-    let betAmount = parseFloat(betAmountEl.value);
-    
-    // Ensure bet is at least 1 and not more than balance
-    betAmount = Math.max(1, Math.min(userData.balance, betAmount));
-    betAmountEl.value = betAmount; // Update the input with validated value
-    
-    if (isNaN(betAmount)) {
-        alert('Please enter a valid number');
-        return;
-    }
-    
-    if (betAmount > userData.balance) {
-        alert('Insufficient balance');
-        return;
-    }
-    
-    if (balls.length >= MAX_BALLS) {
-        alert(`Maximum of ${MAX_BALLS} balls allowed at once`);
-        return;
-    }
-    
-    try {
-        cleanupBalls();
-        placeBetBtn.classList.add('processing');
-        
-        // Deduct bet amount
-        await db.collection('users').doc(currentUser.uid).update({
-            balance: firebase.firestore.FieldValue.increment(-betAmount)
-        });
-        
-        userData.balance -= betAmount;
-        balanceEl.textContent = formatMoney(userData.balance);
-        
-        currentBet = betAmount;
-        canDropBall = false;
-        placeBetBtn.disabled = true;
-        
-        createBall();
-        animationFrameId = requestAnimationFrame(gameLoop);
-    } catch (error) {
-        console.error("Error placing bet:", error);
-        cleanupBalls();
-    }
-});
+            document.querySelectorAll('.quick-bet').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.getAttribute('data-action');
+                    let newAmount = 0;
+                    
+                    switch(action) {
+                        case 'half':
+                            newAmount = Math.max(1, Math.floor(userData.balance / 2));
+                            break;
+                        case 'double':
+                            const currentAmount = parseFloat(betAmountEl.value) || 0;
+                            newAmount = Math.min(userData.balance, Math.max(1, currentAmount * 2));
+                            break;
+                        case 'max':
+                            newAmount = Math.max(1, userData.balance);
+                            break;
+                    }
+                    
+                    betAmountEl.value = newAmount;
+                });
+            });
             
             // Risk level buttons
             document.querySelectorAll('.risk-level').forEach(btn => {
