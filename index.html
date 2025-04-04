@@ -616,47 +616,69 @@
         }
 
         // Game loop
-        function gameLoop() {
-            const completedBalls = [];
-            
-            // Update all balls
-            for (const ball of balls) {
-                const result = updateBall(ball);
-                if (result) {
-                    completedBalls.push(result);
-                }
-            }
-            
-            // Remove completed balls
-            for (const result of completedBalls) {
-                const index = balls.findIndex(b => b.id === result.ball.id);
-                if (index !== -1) {
-                    plinkoBoard.removeChild(result.ball.element);
-                    balls.splice(index, 1);
-                    
-                    // Calculate winnings
-                    const multiplier = result.bucket.multiplier;
-                    const winnings = currentBet * multiplier;
-                    
-                    // Update UI
-                    lastWinEl.textContent = `${multiplier}x`;
-                    
-                    // Add to history
-                    addToHistory(multiplier);
-                    
-                    // Update balance (only add the winnings, don't subtract bet again)
-                    updateBalance(winnings);
-                }
-            }
-            
-            // Continue animation if there are balls
-            if (balls.length > 0) {
-                animationFrameId = requestAnimationFrame(gameLoop);
-            } else {
-                canDropBall = true;
-                placeBetBtn.disabled = false;
-            }
+        // Replace your existing gameLoop function with this:
+function gameLoop() {
+    const completedBalls = [];
+    
+    // Update all balls
+    for (let i = balls.length - 1; i >= 0; i--) {
+        const ball = balls[i];
+        const result = updateBall(ball);
+        
+        if (result) {
+            completedBalls.push(result);
+            // Remove ball from active balls immediately
+            plinkoBoard.removeChild(ball.element);
+            balls.splice(i, 1);
         }
+    }
+    
+    // Process completed balls
+    for (const result of completedBalls) {
+        // Calculate winnings
+        const multiplier = result.bucket.multiplier;
+        const winnings = currentBet * multiplier;
+        
+        // Update UI
+        lastWinEl.textContent = `${multiplier}x`;
+        
+        // Add to history
+        addToHistory(multiplier);
+        
+        // Update balance
+        updateBalance(winnings);
+    }
+    
+    // Continue animation if there are balls
+    if (balls.length > 0) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+    } else {
+        canDropBall = true;
+        placeBetBtn.disabled = false;
+        cancelAnimationFrame(animationFrameId); // Clean up animation frame
+        animationFrameId = null;
+    }
+}
+
+// Add this cleanup function
+function cleanupBalls() {
+    // Remove all balls from DOM
+    balls.forEach(ball => {
+        if (ball.element && ball.element.parentNode === plinkoBoard) {
+            plinkoBoard.removeChild(ball.element);
+        }
+    });
+    balls = [];
+    
+    // Cancel any running animation
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    canDropBall = true;
+    placeBetBtn.disabled = false;
+}
 
         // Add result to history
         function addToHistory(multiplier) {
@@ -779,45 +801,53 @@ async function updateBalance(winnings) {
         // Setup event listeners
         function setupEventListeners() {
             // Place bet button - allows spamming balls
-            placeBetBtn.addEventListener('click', async () => {
-                if (!canDropBall) return;
-                
-                const betAmount = parseFloat(betAmountEl.value);
-                
-                if (isNaN(betAmount) || betAmount < 1) {
-                    alert('Please enter a valid bet amount');
-                    return;
-                }
-                
-                if (betAmount > userData.balance) {
-                    alert('Insufficient balance');
-                    return;
-                }
-                
-                try {
-                    // Deduct bet amount
-                    await db.collection('users').doc(currentUser.uid).update({
-                        balance: firebase.firestore.FieldValue.increment(-betAmount)
-                    });
-                    
-                    userData.balance -= betAmount;
-                    balanceEl.textContent = formatMoney(userData.balance);
-                    
-                    // Start game
-                    currentBet = betAmount;
-                    canDropBall = true; // Allow spamming
-                    
-                    // Create and drop ball
-                    createBall();
-                    
-                    // Start game loop if not already running
-                    if (!animationFrameId) {
-                        animationFrameId = requestAnimationFrame(gameLoop);
-                    }
-                } catch (error) {
-                    console.error("Error placing bet:", error);
-                }
-            });
+           placeBetBtn.addEventListener('click', async () => {
+    if (!canDropBall) return;
+    
+    const betAmount = parseFloat(betAmountEl.value);
+    
+    if (isNaN(betAmount) {
+        alert('Please enter a valid number');
+        return;
+    }
+    
+    if (betAmount < 1) {
+        alert('Minimum bet is 1');
+        return;
+    }
+    
+    if (betAmount > userData.balance) {
+        alert('Insufficient balance');
+        return;
+    }
+    
+    try {
+        // Clean up any existing balls first
+        cleanupBalls();
+        
+        // Deduct bet amount
+        await db.collection('users').doc(currentUser.uid).update({
+            balance: firebase.firestore.FieldValue.increment(-betAmount)
+        });
+        
+        userData.balance -= betAmount;
+        balanceEl.textContent = formatMoney(userData.balance);
+        
+        // Start game
+        currentBet = betAmount;
+        canDropBall = false;
+        placeBetBtn.disabled = true;
+        
+        // Create and drop ball
+        createBall();
+        
+        // Start game loop
+        animationFrameId = requestAnimationFrame(gameLoop);
+    } catch (error) {
+        console.error("Error placing bet:", error);
+        cleanupBalls(); // Clean up on error
+    }
+});
             
             // Quick bet buttons
             document.querySelectorAll('.quick-bet').forEach(btn => {
