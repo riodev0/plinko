@@ -3,133 +3,856 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TB Plinko - Maintenance</title>
+    <title>TB Plinko</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Maintenance Overlay Styles */
-        .maintenance-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 9999;
+        :root {
+            --primary: #00ffcc;
+            --primary-dark: #00cca3;
+            --secondary: #ff00aa;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #ffffff;
+            --gray: #333333;
+            --light-gray: #444444;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(30, 30, 30, 0.9);
+            border-bottom: 1px solid var(--gray);
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .balance {
+            background: var(--gray);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .account-btn {
+            background: var(--gray);
+            border: none;
+            color: var(--light);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .account-btn:hover {
+            background: var(--light-gray);
+            transform: scale(1.05);
+        }
+        
+        .account-menu {
+            position: absolute;
+            top: 100%;
+            right: 2rem;
+            background: var(--darker);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray);
+            padding: 1rem;
+            width: 250px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .account-menu.show {
+            display: block;
+        }
+        
+        .account-menu-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray);
+        }
+        
+        .account-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--light);
+            font-weight: bold;
+        }
+        
+        .account-email {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            word-break: break-all;
+        }
+        
+        .account-menu-item {
+            padding: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .account-menu-item:hover {
+            background: var(--gray);
+        }
+        
+        .account-menu-item i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .game-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .plinko-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .plinko-board {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            background: var(--darker);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            border: 1px solid var(--gray);
+        }
+        
+        .peg {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .ball {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--secondary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: transform 0.05s linear;
+        }
+        
+        .bucket {
+            position: absolute;
+            bottom: 0;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 2px solid var(--primary);
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            cursor: not-allowed;
+            font-weight: bold;
+            color: var(--primary);
         }
-
-        .maintenance-content {
-            text-align: center;
-            padding: 2rem;
-            background: #1a1a1a;
-            border-radius: 15px;
-            border: 2px solid #ff4444;
-            max-width: 500px;
-            animation: maintenancePulse 2s infinite;
+        
+        .bet-controls {
+            background: var(--darker);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--gray);
         }
-
-        @keyframes maintenancePulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
+        
+        .input-group {
+            margin-bottom: 1rem;
         }
-
-        .maintenance-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #ff4444;
-            border-radius: 50%;
-            border-top-color: transparent;
-            margin: 0 auto 1rem;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .maintenance-timer {
-            margin-top: 1rem;
+        
+        input {
+            width: 100%;
             padding: 1rem;
-            background: #2a2a2a;
+            background: var(--gray);
+            border: none;
             border-radius: 8px;
-            font-family: monospace;
+            color: var(--light);
+            font-size: 1rem;
         }
-
-        /* Block all page interactions */
-        body {
-            overflow: hidden;
-            pointer-events: none;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
+        
+        .quick-bets {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .quick-bet {
+            flex: 1;
+            padding: 0.5rem;
+            background: var(--gray);
+            border: none;
+            border-radius: 4px;
+            color: var(--light);
+            cursor: pointer;
+        }
+        
+        .risk-levels {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .risk-level {
+            flex: 1;
+            padding: 0.5rem;
+            background: var(--gray);
+            border: none;
+            border-radius: 4px;
+            color: var(--light);
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .risk-level.active {
+            background: var(--primary);
+            color: var(--dark);
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-bet {
+            flex: 1;
+            padding: 1rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--dark);
+        }
+        
+        .btn-bet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 204, 0.3);
+        }
+        
+        .btn-bet:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .history {
+            background: var(--darker);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--gray);
+        }
+        
+        .history-list {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        
+        .history-item {
+            min-width: 50px;
+            height: 50px;
+            background: var(--gray);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .multiplier-display {
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+            color: var(--primary);
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .plinko-board {
+                height: 300px;
+            }
+            
+            .history-item {
+                min-width: 40px;
+                height: 40px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Maintenance Overlay (automatically shown on page load) -->
-    <div class="maintenance-overlay">
-        <div class="maintenance-content">
-            <div class="maintenance-spinner"></div>
-            <h1>⚠️ System Maintenance ⚠️</h1>
-            <p>TB Plinko is currently undergoing scheduled maintenance</p>
-            <p>We'll be back soon !</p>
-            <div class="maintenance-timer">
-                <span id="maintenanceTimer">Estimated downtime: 12:00:00</span>
+    <nav class="nav">
+        <div class="logo">TB PLINKO</div>
+        <div class="balance">
+            <i class="fas fa-coins"></i>
+            <span id="balance">0</span>
+        </div>
+        <button class="account-btn" id="account-btn">
+            <i class="fas fa-user"></i>
+        </button>
+        
+        <div class="account-menu" id="account-menu">
+            <div class="account-menu-header">
+                <div class="account-avatar" id="user-avatar">T</div>
+                <div class="account-email" id="account-email">user@example.com</div>
+            </div>
+            <div class="account-menu-item" id="referral-btn">
+                <i class="fas fa-gift"></i>
+                <span>Referral Program</span>
+            </div>
+            <div class="account-menu-item" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="game-container">
+        <div class="plinko-container">
+            <div class="plinko-board" id="plinko-board"></div>
+            
+            <div class="bet-controls">
+                <div class="input-group">
+                    <input type="number" id="bet-amount" placeholder="Bet amount" min="1">
+                    <div class="quick-bets">
+                        <button class="quick-bet" data-action="half">½</button>
+                        <button class="quick-bet" data-action="double">2x</button>
+                        <button class="quick-bet" data-action="max">MAX</button>
+                    </div>
+                </div>
+                
+                <div class="risk-levels">
+                    <button class="risk-level active" data-risk="low">Low (1-5x)</button>
+                    <button class="risk-level" data-risk="medium">Medium (1-10x)</button>
+                    <button class="risk-level" data-risk="high">High (1-20x)</button>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-bet" id="place-bet">DROP BALL</button>
+                </div>
+                
+                <div class="multiplier-display">
+                    Last win: <span id="last-win">0x</span>
+                </div>
+            </div>
+            
+            <div class="history">
+                <h3>Recent Wins</h3>
+                <div class="history-list" id="history-list"></div>
             </div>
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
     <script>
-        // Immediately show maintenance on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const startTime = Date.now();
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDfK_HayFBawYzgIcGXQsQ4ynyCrVHHL8A",
+            authDomain: "tbgames-d6995.firebaseapp.com",
+            projectId: "tbgames-d6995",
+            storageBucket: "tbgames-d6995.appspot.com",
+            messagingSenderId: "578117532273",
+            appId: "1:578117532273:web:3e52426b147f1c7e5af9d0",
+            measurementId: "G-VWLDSR92KV"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Game State
+        let currentUser = null;
+        let userData = null;
+        let gameActive = false;
+        let currentBet = 0;
+        let currentRisk = "low";
+        let balls = [];
+        let pegs = [];
+        let buckets = [];
+        let ballId = 0;
+        let animationFrameId = null;
+
+        // Multiplier tables
+        const multiplierTables = {
+            low: [1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4, 5],
+            medium: [0.5, 0.8, 1.2, 1.6, 2, 3, 5, 8, 10],
+            high: [0.2, 0.5, 1, 2, 3, 5, 8, 15, 20]
+        };
+
+        // DOM Elements
+        const balanceEl = document.getElementById('balance');
+        const betAmountEl = document.getElementById('bet-amount');
+        const placeBetBtn = document.getElementById('place-bet');
+        const historyList = document.getElementById('history-list');
+        const lastWinEl = document.getElementById('last-win');
+        const plinkoBoard = document.getElementById('plinko-board');
+        const accountBtn = document.getElementById('account-btn');
+        const accountMenu = document.getElementById('account-menu');
+        const accountEmailEl = document.getElementById('account-email');
+        const userAvatarEl = document.getElementById('user-avatar');
+        const logoutBtn = document.getElementById('logout-btn');
+        const referralBtn = document.getElementById('referral-btn');
+
+        // Format money with abbreviation
+        function formatMoney(value) {
+            if (value >= 1000000000) return (value/1000000000).toFixed(1) + 'B';
+            if (value >= 1000000) return (value/1000000).toFixed(1) + 'M';
+            if (value >= 1000) return (value/1000).toFixed(1) + 'k';
+            return value.toFixed(0);
+        }
+
+        // Initialize Plinko board
+        function initPlinkoBoard() {
+            const boardWidth = plinkoBoard.clientWidth;
+            const boardHeight = plinkoBoard.clientHeight;
             
-            // Update timer every second
-            setInterval(() => {
-                const elapsed = Date.now() - startTime;
-                const hours = Math.floor(elapsed / 3600000);
-                const minutes = Math.floor((elapsed % 3600000) / 60000);
-                const seconds = Math.floor((elapsed % 60000) / 1000);
+            // Create pegs
+            const pegRows = 12;
+            const pegCols = 9;
+            const pegHorizontalSpacing = boardWidth / (pegCols + 1);
+            const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
+            
+            for (let row = 0; row < pegRows; row++) {
+                const colsInRow = pegCols - Math.abs(Math.floor(pegCols / 2) - row % pegCols);
+                const startCol = (pegCols - colsInRow) / 2;
                 
-                document.getElementById('maintenanceTimer').textContent = 
-                    `Estimated downtime: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            }, 1000);
-
-            // Block all user interactions
-            document.addEventListener('keydown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, true);
-
-            document.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, true);
-
-            // Force reload after 1 hour (optional)
-            setTimeout(() => {
-                window.location.reload();
-            }, 3600000);
-        });
-
-        // Prevent right-click context menu
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-        
-        // Prevent F12, Ctrl+Shift+I, etc.
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-                (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-                (e.ctrlKey && e.key === 'U')) {
-                e.preventDefault();
+                for (let col = 0; col < colsInRow; col++) {
+                    const peg = document.createElement('div');
+                    peg.className = 'peg';
+                    peg.style.left = `${(startCol + col + 0.5) * pegHorizontalSpacing}px`;
+                    peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
+                    plinkoBoard.appendChild(peg);
+                    pegs.push({
+                        element: peg,
+                        x: (startCol + col + 0.5) * pegHorizontalSpacing,
+                        y: (row + 1) * pegVerticalSpacing,
+                        radius: 6
+                    });
+                }
             }
+            
+            // Create buckets
+            const bucketCount = 9;
+            const bucketWidth = boardWidth / bucketCount;
+            
+            for (let i = 0; i < bucketCount; i++) {
+                const bucket = document.createElement('div');
+                bucket.className = 'bucket';
+                bucket.style.left = `${i * bucketWidth}px`;
+                bucket.style.width = `${bucketWidth}px`;
+                bucket.textContent = `${multiplierTables.low[i]}x`;
+                plinkoBoard.appendChild(bucket);
+                buckets.push({
+                    element: bucket,
+                    x: i * bucketWidth + bucketWidth / 2,
+                    width: bucketWidth,
+                    multiplier: multiplierTables.low[i]
+                });
+            }
+        }
+
+        // Create a new ball
+        function createBall() {
+            const boardWidth = plinkoBoard.clientWidth;
+            const ball = {
+                id: ballId++,
+                x: boardWidth / 2,
+                y: 20,
+                vx: (Math.random() - 0.5) * 2,
+                vy: 0,
+                radius: 10,
+                element: document.createElement('div')
+            };
+            
+            ball.element.className = 'ball';
+            ball.element.style.left = `${ball.x}px`;
+            ball.element.style.top = `${ball.y}px`;
+            plinkoBoard.appendChild(ball.element);
+            
+            balls.push(ball);
+            return ball;
+        }
+
+        // Update ball position
+        function updateBall(ball) {
+            const gravity = 0.2;
+            const friction = 0.995;
+            const bounce = 0.8;
+            
+            ball.vy += gravity;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Check collision with pegs
+            for (const peg of pegs) {
+                const dx = ball.x - peg.x;
+                const dy = ball.y - peg.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < ball.radius + peg.radius) {
+                    // Collision detected
+                    const angle = Math.atan2(dy, dx);
+                    const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                    
+                    ball.vx = Math.cos(angle) * speed * bounce;
+                    ball.vy = Math.sin(angle) * speed * bounce;
+                    
+                    // Move ball out of collision
+                    const overlap = ball.radius + peg.radius - distance;
+                    ball.x += Math.cos(angle) * overlap;
+                    ball.y += Math.sin(angle) * overlap;
+                }
+            }
+            
+            // Check collision with walls
+            if (ball.x < ball.radius) {
+                ball.x = ball.radius;
+                ball.vx *= -bounce;
+            } else if (ball.x > plinkoBoard.clientWidth - ball.radius) {
+                ball.x = plinkoBoard.clientWidth - ball.radius;
+                ball.vx *= -bounce;
+            }
+            
+            // Apply friction
+            ball.vx *= friction;
+            ball.vy *= friction;
+            
+            // Update element position
+            ball.element.style.left = `${ball.x - ball.radius}px`;
+            ball.element.style.top = `${ball.y - ball.radius}px`;
+            
+            // Check if ball reached bottom
+            if (ball.y > plinkoBoard.clientHeight - 20) {
+                // Find which bucket the ball landed in
+                for (const bucket of buckets) {
+                    if (ball.x >= bucket.x - bucket.width / 2 && ball.x < bucket.x + bucket.width / 2) {
+                        return {
+                            bucket: bucket,
+                            ball: ball
+                        };
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // Game loop
+        function gameLoop() {
+            const completedBalls = [];
+            
+            // Update all balls
+            for (const ball of balls) {
+                const result = updateBall(ball);
+                if (result) {
+                    completedBalls.push(result);
+                }
+            }
+            
+            // Remove completed balls
+            for (const result of completedBalls) {
+                const index = balls.findIndex(b => b.id === result.ball.id);
+                if (index !== -1) {
+                    plinkoBoard.removeChild(result.ball.element);
+                    balls.splice(index, 1);
+                    
+                    // Calculate winnings
+                    const multiplier = result.bucket.multiplier;
+                    const winnings = currentBet * multiplier;
+                    
+                    // Update UI
+                    lastWinEl.textContent = `${multiplier}x`;
+                    
+                    // Add to history
+                    addToHistory(multiplier);
+                    
+                    // Update balance
+                    updateBalance(winnings);
+                }
+            }
+            
+            // Continue animation if there are balls
+            if (balls.length > 0) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            } else {
+                gameActive = false;
+                placeBetBtn.disabled = false;
+            }
+        }
+
+        // Add result to history
+        function addToHistory(multiplier) {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.textContent = `${multiplier}x`;
+            historyList.insertBefore(item, historyList.firstChild);
+            
+            // Limit history to 10 items
+            if (historyList.children.length > 10) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+
+        // Update user balance
+        async function updateBalance(amount) {
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(amount - currentBet)
+                });
+                
+                // Update local balance
+                userData.balance += (amount - currentBet);
+                balanceEl.textContent = formatMoney(userData.balance);
+                
+                // Save game result
+                await db.collection('plinko_games').add({
+                    bet: currentBet,
+                    multiplier: multiplier.toFixed(2),
+                    payout: amount,
+                    riskLevel: currentRisk,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userId: currentUser.uid
+                });
+            } catch (error) {
+                console.error("Error updating balance:", error);
+            }
+        }
+
+        // Update risk level
+        function updateRiskLevel(risk) {
+            currentRisk = risk;
+            
+            // Update active button
+            document.querySelectorAll('.risk-level').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.risk === risk) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Update bucket multipliers
+            const multipliers = multiplierTables[risk];
+            buckets.forEach((bucket, index) => {
+                bucket.multiplier = multipliers[index];
+                bucket.element.textContent = `${multipliers[index]}x`;
+            });
+        }
+
+        // Auth State Listener
+        auth.onAuthStateChanged(async user => {
+            if (!user) {
+                window.location.href = 'https://riodev0.github.io/login';
+                return;
+            }
+            
+            currentUser = user;
+            await loadUserData();
+            
+            // Update account menu
+            const username = user.email.split('@')[0];
+            accountEmailEl.textContent = user.email;
+            userAvatarEl.textContent = username.charAt(0).toUpperCase();
+            
+            // Initialize game
+            initPlinkoBoard();
+            setupEventListeners();
         });
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    userData = doc.data();
+                    balanceEl.textContent = formatMoney(userData.balance);
+                    
+                    // Set up real-time listener for balance updates
+                    db.collection('users').doc(currentUser.uid).onSnapshot((doc) => {
+                        if (doc.exists) {
+                            const updatedData = doc.data();
+                            userData.balance = updatedData.balance;
+                            balanceEl.textContent = formatMoney(updatedData.balance);
+                        }
+                    });
+                } else {
+                    // Create new user data
+                    await db.collection('users').doc(currentUser.uid).set({
+                        balance: 1000,
+                        email: currentUser.email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    userData = { balance: 1000 };
+                    balanceEl.textContent = formatMoney(1000);
+                }
+            } catch (error) {
+                console.error("Error loading user data:", error);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Place bet button
+            placeBetBtn.addEventListener('click', async () => {
+                const betAmount = parseFloat(betAmountEl.value);
+                
+                if (isNaN(betAmount) || betAmount < 1) {
+                    alert('Please enter a valid bet amount');
+                    return;
+                }
+                
+                if (betAmount > userData.balance) {
+                    alert('Insufficient balance');
+                    return;
+                }
+                
+                if (gameActive) return;
+                
+                try {
+                    // Deduct bet amount
+                    await db.collection('users').doc(currentUser.uid).update({
+                        balance: firebase.firestore.FieldValue.increment(-betAmount)
+                    });
+                    
+                    userData.balance -= betAmount;
+                    balanceEl.textContent = formatMoney(userData.balance);
+                    
+                    // Start game
+                    currentBet = betAmount;
+                    gameActive = true;
+                    placeBetBtn.disabled = true;
+                    
+                    // Create and drop ball
+                    createBall();
+                    animationFrameId = requestAnimationFrame(gameLoop);
+                } catch (error) {
+                    console.error("Error placing bet:", error);
+                }
+            });
+            
+            // Quick bet buttons
+            document.querySelectorAll('.quick-bet').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.getAttribute('data-action');
+                    let newAmount = parseFloat(betAmountEl.value) || 0;
+                    
+                    switch(action) {
+                        case 'half':
+                            newAmount = Math.floor(userData.balance / 2);
+                            break;
+                        case 'double':
+                            newAmount = Math.min(userData.balance, (parseFloat(betAmountEl.value) || 0) * 2);
+                            break;
+                        case 'max':
+                            newAmount = userData.balance;
+                            break;
+                    }
+                    
+                    betAmountEl.value = newAmount;
+                });
+            });
+            
+            // Risk level buttons
+            document.querySelectorAll('.risk-level').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    updateRiskLevel(btn.dataset.risk);
+                });
+            });
+            
+            // Account menu toggle
+            accountBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                accountMenu.classList.toggle('show');
+            });
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function() {
+                accountMenu.classList.remove('show');
+            });
+            
+            // Prevent menu from closing when clicking inside it
+            accountMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // Logout button
+            logoutBtn.addEventListener('click', () => {
+                auth.signOut().then(() => {
+                    window.location.href = 'https://riodev0.github.io/login';
+                });
+            });
+            
+            // Referral button
+            referralBtn.addEventListener('click', () => {
+                alert('Referral program coming soon!');
+            });
+        }
     </script>
 </body>
 </html>
