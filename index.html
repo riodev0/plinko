@@ -672,29 +672,38 @@
         }
 
         // Update user balance (fixed to only add winnings)
-        async function updateBalance(winnings) {
-            try {
-                await db.collection('users').doc(currentUser.uid).update({
-                    balance: firebase.firestore.FieldValue.increment(winnings)
-                });
-                
-                // Update local balance
-                userData.balance += winnings;
-                balanceEl.textContent = formatMoney(userData.balance);
-                
-                // Save game result
-                await db.collection('plinko_games').add({
-                    bet: currentBet,
-                    multiplier: winnings / currentBet,
-                    payout: winnings,
-                    riskLevel: currentRisk,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId: currentUser.uid
-                });
-            } catch (error) {
-                console.error("Error updating balance:", error);
-            }
-        }
+       // Modified updateBalance function
+async function updateBalance(winnings) {
+    try {
+        // Update balance with transaction
+        await db.runTransaction(async (transaction) => {
+            const userRef = db.collection('users').doc(currentUser.uid);
+            const doc = await transaction.get(userRef);
+            
+            if (!doc.exists) throw "Document does not exist!";
+            
+            const newBalance = (doc.data().balance || 0) + winnings;
+            transaction.update(userRef, { balance: newBalance });
+        });
+        
+        // Update local balance
+        userData.balance += winnings;
+        balanceEl.textContent = formatMoney(userData.balance);
+        
+        // Save game result
+        await db.collection('plinko_games').add({
+            bet: currentBet,
+            multiplier: winnings / currentBet,
+            payout: winnings,
+            riskLevel: currentRisk,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userId: currentUser.uid
+        });
+    } catch (error) {
+        console.error("Error updating balance:", error);
+        alert('Error updating balance - please refresh!');
+    }
+}
 
         // Update risk level
         function updateRiskLevel(risk) {
