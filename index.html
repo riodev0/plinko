@@ -162,17 +162,20 @@
             flex: 1;
         }
         
-        .plinko-board {
-            width: 100%;
-            max-width: 600px;
-            height: 400px;
-            background: var(--darker);
-            border-radius: 16px;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 2rem;
-            border: 1px solid var(--gray);
-        }
+       .plinko-board {
+    width: 100%;
+    max-width: 600px;
+    height: 400px;
+    background: var(--darker);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden; /* Keep this as hidden */
+    margin-bottom: 2rem;
+    border: 1px solid var(--gray);
+    /* Add these to prevent layout shifts */
+    min-height: 400px;
+    flex-shrink: 0;
+}
         
         .peg {
             position: absolute;
