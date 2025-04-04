@@ -508,28 +508,30 @@
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
             const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
             
-            for (let row = 0; row < pegRows; row++) {
-                const colsInRow = pegCols - Math.abs(4 - row % 9);
-                const startCol = (pegCols - colsInRow) / 2;
-                
-                for (let col = 0; col < colsInRow; col++) {
-                    const xOffset = (row % 2 === 0) ? 0 : pegHorizontalSpacing / 2;
-                    const peg = document.createElement('div');
-                    peg.className = 'peg';
-                    peg.style.position = 'absolute';
-                    peg.style.left = `${xOffset + (startCol + col + 0.5) * pegHorizontalSpacing}px`;
-                    peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
-                    peg.style.transform = 'translate(-50%, -50%)';
-                    peg.style.willChange = 'transform';
-                    plinkoBoard.appendChild(peg);
-                    pegs.push({
-                        element: peg,
-                        x: xOffset + (startCol + col + 0.5) * pegHorizontalSpacing,
-                        y: (row + 1) * pegVerticalSpacing,
-                        radius: 5
-                    });
-                }
-            }
+          // Replace your current peg creation code with this:
+for (let row = 0; row < pegRows; row++) {
+    const colsInRow = pegCols;
+    const startCol = 0;
+    
+    for (let col = 0; col < colsInRow; col++) {
+        // Stagger every other row by half spacing
+        const xOffset = (row % 2 === 0) ? 0 : pegHorizontalSpacing / 2;
+        const peg = document.createElement('div');
+        peg.className = 'peg';
+        peg.style.position = 'absolute';
+        peg.style.left = `${xOffset + (col + 0.5) * pegHorizontalSpacing}px`;
+        peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
+        peg.style.transform = 'translate(-50%, -50%)';
+        peg.style.willChange = 'transform';
+        plinkoBoard.appendChild(peg);
+        pegs.push({
+            element: peg,
+            x: xOffset + (col + 0.5) * pegHorizontalSpacing,
+            y: (row + 1) * pegVerticalSpacing,
+            radius: 5
+        });
+    }
+}
             
             // Create buckets with fixed positions
             const bucketCount = 9;
