@@ -462,7 +462,7 @@
 
         // Multiplier tables
         const multiplierTables = {
-            low: [1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4, 5],
+            low: [0.2, 0.4, 0.6, 1.8, 2, 2.5, 3, 4, 5],
             medium: [0.5, 0.8, 1.2, 1.6, 2, 3, 5, 8, 10],
             high: [0.2, 0.5, 1, 2, 3, 5, 8, 15, 20]
         };
@@ -503,8 +503,8 @@
             pegs = [];
             buckets = [];
             
-            const pegRows = 12;
-            const pegCols = 8;
+            const pegRows = 13;
+            const pegCols = 10;
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
             const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
             
