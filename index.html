@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TB Plinko V2</title>
+    <title>TB Plinko</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -84,8 +84,9 @@
         
         .account-menu {
             position: absolute;
-            top: 70px;
+            top: 100%;
             right: 2rem;
+            margin-top: 0.5rem;
             background: var(--darker);
             border-radius: 8px;
             box-shadow: var(--shadow);
@@ -162,20 +163,19 @@
             flex: 1;
         }
         
-       .plinko-board {
-    width: 100%;
-    max-width: 600px;
-    height: 400px;
-    background: var(--darker);
-    border-radius: 16px;
-    position: relative;
-    overflow: hidden; /* Keep this as hidden */
-    margin-bottom: 2rem;
-    border: 1px solid var(--gray);
-    /* Add these to prevent layout shifts */
-    min-height: 400px;
-    flex-shrink: 0;
-}
+        .plinko-board {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            min-height: 400px;
+            background: var(--darker);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            border: 1px solid var(--gray);
+            flex-shrink: 0;
+        }
         
         .peg {
             position: absolute;
@@ -301,6 +301,11 @@
             box-shadow: none;
         }
         
+        .btn-bet.processing {
+            background: var(--light-gray);
+            cursor: wait;
+        }
+        
         .history {
             background: var(--darker);
             padding: 1.5rem;
@@ -338,6 +343,7 @@
         @media (max-width: 768px) {
             .plinko-board {
                 height: 300px;
+                min-height: 300px;
             }
             
             .history-item {
@@ -347,7 +353,6 @@
             }
             
             .account-menu {
-                top: 60px;
                 right: 1rem;
             }
         }
@@ -447,6 +452,7 @@
         let ballId = 0;
         let animationFrameId = null;
         let canDropBall = true;
+        const MAX_BALLS = 10; // Limit to prevent spamming
 
         // Multiplier tables
         const multiplierTables = {
@@ -489,23 +495,24 @@
             
             // Create pegs in original layout
             const pegRows = 12;
-            const pegCols = 9;
+            const pegCols = 8;
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
             const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
             
             for (let row = 0; row < pegRows; row++) {
-                const colsInRow = pegCols - Math.abs(Math.floor(pegCols / 2) - row % pegCols);
+                const colsInRow = pegCols - Math.abs(4 - row % 9);
                 const startCol = (pegCols - colsInRow) / 2;
                 
                 for (let col = 0; col < colsInRow; col++) {
+                    const xOffset = (row % 2 === 0) ? 0 : pegHorizontalSpacing / 2;
                     const peg = document.createElement('div');
                     peg.className = 'peg';
-                    peg.style.left = `${(startCol + col + 0.5) * pegHorizontalSpacing}px`;
+                    peg.style.left = `${xOffset + (startCol + col + 0.5) * pegHorizontalSpacing}px`;
                     peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
                     plinkoBoard.appendChild(peg);
                     pegs.push({
                         element: peg,
-                        x: (startCol + col + 0.5) * pegHorizontalSpacing,
+                        x: xOffset + (startCol + col + 0.5) * pegHorizontalSpacing,
                         y: (row + 1) * pegVerticalSpacing,
                         radius: 5
                     });
@@ -532,7 +539,7 @@
             }
         }
 
-        // Create a new ball (smaller size)
+        // Create a new ball
         function createBall() {
             const boardWidth = plinkoBoard.clientWidth;
             const ball = {
@@ -541,7 +548,7 @@
                 y: 20,
                 vx: (Math.random() - 0.5) * 2,
                 vy: 0,
-                radius: 7, // Smaller ball size
+                radius: 7,
                 element: document.createElement('div')
             };
             
@@ -618,70 +625,67 @@
             return null;
         }
 
-        // Game loop
-        // Replace your existing gameLoop function with this:
-function gameLoop() {
-    const completedBalls = [];
-    
-    // Update all balls
-    for (let i = balls.length - 1; i >= 0; i--) {
-        const ball = balls[i];
-        const result = updateBall(ball);
-        
-        if (result) {
-            completedBalls.push(result);
-            // Remove ball from active balls immediately
-            plinkoBoard.removeChild(ball.element);
-            balls.splice(i, 1);
+        // Clean up all balls
+        function cleanupBalls() {
+            // Remove all balls from DOM
+            balls.forEach(ball => {
+                if (ball.element && ball.element.parentNode === plinkoBoard) {
+                    plinkoBoard.removeChild(ball.element);
+                }
+            });
+            balls = [];
+            
+            // Cancel any running animation
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            canDropBall = true;
+            placeBetBtn.disabled = false;
+            placeBetBtn.classList.remove('processing');
         }
-    }
-    
-    // Process completed balls
-    for (const result of completedBalls) {
-        // Calculate winnings
-        const multiplier = result.bucket.multiplier;
-        const winnings = currentBet * multiplier;
-        
-        // Update UI
-        lastWinEl.textContent = `${multiplier}x`;
-        
-        // Add to history
-        addToHistory(multiplier);
-        
-        // Update balance
-        updateBalance(winnings);
-    }
-    
-    // Continue animation if there are balls
-    if (balls.length > 0) {
-        animationFrameId = requestAnimationFrame(gameLoop);
-    } else {
-        canDropBall = true;
-        placeBetBtn.disabled = false;
-        cancelAnimationFrame(animationFrameId); // Clean up animation frame
-        animationFrameId = null;
-    }
-}
 
-// Add this cleanup function
-function cleanupBalls() {
-    // Remove all balls from DOM
-    balls.forEach(ball => {
-        if (ball.element && ball.element.parentNode === plinkoBoard) {
-            plinkoBoard.removeChild(ball.element);
+        // Game loop
+        function gameLoop() {
+            const completedBalls = [];
+            
+            // Update all balls (iterate backwards for safe removal)
+            for (let i = balls.length - 1; i >= 0; i--) {
+                const ball = balls[i];
+                const result = updateBall(ball);
+                
+                if (result) {
+                    completedBalls.push(result);
+                    // Remove ball from DOM and array immediately
+                    plinkoBoard.removeChild(ball.element);
+                    balls.splice(i, 1);
+                }
+            }
+            
+            // Process completed balls
+            for (const result of completedBalls) {
+                // Calculate winnings
+                const multiplier = result.bucket.multiplier;
+                const winnings = currentBet * multiplier;
+                
+                // Update UI
+                lastWinEl.textContent = `${multiplier}x`;
+                
+                // Add to history
+                addToHistory(multiplier);
+                
+                // Update balance
+                updateBalance(winnings);
+            }
+            
+            // Continue animation if there are balls
+            if (balls.length > 0) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            } else {
+                cleanupBalls(); // Full cleanup when no balls left
+            }
         }
-    });
-    balls = [];
-    
-    // Cancel any running animation
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    
-    canDropBall = true;
-    placeBetBtn.disabled = false;
-}
 
         // Add result to history
         function addToHistory(multiplier) {
@@ -696,39 +700,37 @@ function cleanupBalls() {
             }
         }
 
-        // Update user balance (fixed to only add winnings)
-       // Modified updateBalance function
-async function updateBalance(winnings) {
-    try {
-        // Update balance with transaction
-        await db.runTransaction(async (transaction) => {
-            const userRef = db.collection('users').doc(currentUser.uid);
-            const doc = await transaction.get(userRef);
-            
-            if (!doc.exists) throw "Document does not exist!";
-            
-            const newBalance = (doc.data().balance || 0) + winnings;
-            transaction.update(userRef, { balance: newBalance });
-        });
-        
-        // Update local balance
-        userData.balance += winnings;
-        balanceEl.textContent = formatMoney(userData.balance);
-        
-        // Save game result
-        await db.collection('plinko_games').add({
-            bet: currentBet,
-            multiplier: winnings / currentBet,
-            payout: winnings,
-            riskLevel: currentRisk,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userId: currentUser.uid
-        });
-    } catch (error) {
-        console.error("Error updating balance:", error);
-        alert('Error updating balance - please refresh!');
-    }
-}
+        // Update user balance
+        async function updateBalance(winnings) {
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const userRef = db.collection('users').doc(currentUser.uid);
+                    const doc = await transaction.get(userRef);
+                    
+                    if (!doc.exists) throw "Document does not exist!";
+                    
+                    const newBalance = (doc.data().balance || 0) + winnings;
+                    transaction.update(userRef, { balance: newBalance });
+                });
+                
+                // Update local balance
+                userData.balance += winnings;
+                balanceEl.textContent = formatMoney(userData.balance);
+                
+                // Save game result
+                await db.collection('plinko_games').add({
+                    bet: currentBet,
+                    multiplier: winnings / currentBet,
+                    payout: winnings,
+                    riskLevel: currentRisk,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userId: currentUser.uid
+                });
+            } catch (error) {
+                console.error("Error updating balance:", error);
+                alert('Error updating balance - please refresh!');
+            }
+        }
 
         // Update risk level
         function updateRiskLevel(risk) {
@@ -776,81 +778,91 @@ async function updateBalance(winnings) {
                 const doc = await db.collection('users').doc(currentUser.uid).get();
                 if (doc.exists) {
                     userData = doc.data();
-                    balanceEl.textContent = formatMoney(userData.balance);
+                    balanceEl.textContent = formatMoney(userData.balance || 0);
                     
                     // Set up real-time listener for balance updates
                     db.collection('users').doc(currentUser.uid).onSnapshot((doc) => {
                         if (doc.exists) {
                             const updatedData = doc.data();
-                            userData.balance = updatedData.balance;
-                            balanceEl.textContent = formatMoney(updatedData.balance);
+                            userData.balance = updatedData.balance || 0;
+                            balanceEl.textContent = formatMoney(userData.balance);
                         }
-                    });
+                    }, (error) => console.error("Snapshot error:", error));
                 } else {
                     // Create new user data
+                    const initialBalance = 1000;
                     await db.collection('users').doc(currentUser.uid).set({
-                        balance: 1000,
+                        balance: initialBalance,
                         email: currentUser.email,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    userData = { balance: 1000 };
-                    balanceEl.textContent = formatMoney(1000);
+                    userData = { balance: initialBalance };
+                    balanceEl.textContent = formatMoney(initialBalance);
                 }
             } catch (error) {
                 console.error("Error loading user data:", error);
+                alert('Error loading balance - please refresh!');
             }
         }
 
         // Setup event listeners
         function setupEventListeners() {
-            // Place bet button - allows spamming balls
-           placeBetBtn.addEventListener('click', async () => {
-    if (!canDropBall) return;
-    
-    const betAmount = parseFloat(betAmountEl.value);
-    
-    if (isNaN(betAmount) {
-        alert('Please enter a valid number');
-        return;
-    }
-    
-    if (betAmount < 1) {
-        alert('Minimum bet is 1');
-        return;
-    }
-    
-    if (betAmount > userData.balance) {
-        alert('Insufficient balance');
-        return;
-    }
-    
-    try {
-        // Clean up any existing balls first
-        cleanupBalls();
-        
-        // Deduct bet amount
-        await db.collection('users').doc(currentUser.uid).update({
-            balance: firebase.firestore.FieldValue.increment(-betAmount)
-        });
-        
-        userData.balance -= betAmount;
-        balanceEl.textContent = formatMoney(userData.balance);
-        
-        // Start game
-        currentBet = betAmount;
-        canDropBall = false;
-        placeBetBtn.disabled = true;
-        
-        // Create and drop ball
-        createBall();
-        
-        // Start game loop
-        animationFrameId = requestAnimationFrame(gameLoop);
-    } catch (error) {
-        console.error("Error placing bet:", error);
-        cleanupBalls(); // Clean up on error
-    }
-});
+            // Place bet button
+            placeBetBtn.addEventListener('click', async () => {
+                if (!canDropBall) return;
+                
+                const betAmount = parseFloat(betAmountEl.value);
+                
+                if (isNaN(betAmount)) {
+                    alert('Please enter a valid number');
+                    return;
+                }
+                
+                if (betAmount < 1) {
+                    alert('Minimum bet is 1');
+                    return;
+                }
+                
+                if (betAmount > userData.balance) {
+                    alert('Insufficient balance');
+                    return;
+                }
+                
+                if (balls.length >= MAX_BALLS) {
+                    alert(`Maximum of ${MAX_BALLS} balls allowed at once`);
+                    return;
+                }
+                
+                try {
+                    // Clean up any existing balls first
+                    cleanupBalls();
+                    
+                    // Visual feedback
+                    placeBetBtn.classList.add('processing');
+                    
+                    // Deduct bet amount
+                    await db.collection('users').doc(currentUser.uid).update({
+                        balance: firebase.firestore.FieldValue.increment(-betAmount)
+                    });
+                    
+                    userData.balance -= betAmount;
+                    balanceEl.textContent = formatMoney(userData.balance);
+                    
+                    // Start game
+                    currentBet = betAmount;
+                    canDropBall = false;
+                    placeBetBtn.disabled = true;
+                    
+                    // Create and drop ball
+                    createBall();
+                    
+                    // Start game loop
+                    animationFrameId = requestAnimationFrame(gameLoop);
+                } catch (error) {
+                    console.error("Error placing bet:", error);
+                    cleanupBalls(); // Clean up on error
+                }
+            });
             
             // Quick bet buttons
             document.querySelectorAll('.quick-bet').forEach(btn => {
