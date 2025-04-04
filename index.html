@@ -41,6 +41,7 @@
             padding: 1rem 2rem;
             background: rgba(30, 30, 30, 0.9);
             border-bottom: 1px solid var(--gray);
+            position: relative;
         }
         
         .logo {
@@ -83,7 +84,7 @@
         
         .account-menu {
             position: absolute;
-            top: 100%;
+            top: 70px;
             right: 2rem;
             background: var(--darker);
             border-radius: 8px;
@@ -175,8 +176,8 @@
         
         .peg {
             position: absolute;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             background: var(--primary);
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -184,8 +185,8 @@
         
         .ball {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 14px;
+            height: 14px;
             background: var(--secondary);
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -341,6 +342,11 @@
                 height: 40px;
                 font-size: 0.9rem;
             }
+            
+            .account-menu {
+                top: 60px;
+                right: 1rem;
+            }
         }
     </style>
 </head>
@@ -468,7 +474,7 @@
             return value.toFixed(0);
         }
 
-        // Initialize Plinko board with centered pegs
+        // Initialize Plinko board with original peg layout
         function initPlinkoBoard() {
             const boardWidth = plinkoBoard.clientWidth;
             const boardHeight = plinkoBoard.clientHeight;
@@ -478,27 +484,27 @@
             pegs = [];
             buckets = [];
             
-            // Create pegs in a centered triangular pattern
+            // Create pegs in original layout
             const pegRows = 12;
             const pegCols = 9;
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
             const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
             
             for (let row = 0; row < pegRows; row++) {
-                const offset = (pegCols - (row % pegCols)) / 2;
-                const pegsInRow = pegCols - (row % pegCols);
+                const colsInRow = pegCols - Math.abs(Math.floor(pegCols / 2) - row % pegCols);
+                const startCol = (pegCols - colsInRow) / 2;
                 
-                for (let col = 0; col < pegsInRow; col++) {
+                for (let col = 0; col < colsInRow; col++) {
                     const peg = document.createElement('div');
                     peg.className = 'peg';
-                    peg.style.left = `${(offset + col + 0.5) * pegHorizontalSpacing}px`;
+                    peg.style.left = `${(startCol + col + 0.5) * pegHorizontalSpacing}px`;
                     peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
                     plinkoBoard.appendChild(peg);
                     pegs.push({
                         element: peg,
-                        x: (offset + col + 0.5) * pegHorizontalSpacing,
+                        x: (startCol + col + 0.5) * pegHorizontalSpacing,
                         y: (row + 1) * pegVerticalSpacing,
-                        radius: 6
+                        radius: 5
                     });
                 }
             }
@@ -523,7 +529,7 @@
             }
         }
 
-        // Create a new ball
+        // Create a new ball (smaller size)
         function createBall() {
             const boardWidth = plinkoBoard.clientWidth;
             const ball = {
@@ -532,7 +538,7 @@
                 y: 20,
                 vx: (Math.random() - 0.5) * 2,
                 vy: 0,
-                radius: 10,
+                radius: 7, // Smaller ball size
                 element: document.createElement('div')
             };
             
@@ -638,7 +644,7 @@
                     // Add to history
                     addToHistory(multiplier);
                     
-                    // Update balance
+                    // Update balance (only add the winnings, don't subtract bet again)
                     updateBalance(winnings);
                 }
             }
@@ -665,22 +671,22 @@
             }
         }
 
-        // Update user balance
-        async function updateBalance(amount) {
+        // Update user balance (fixed to only add winnings)
+        async function updateBalance(winnings) {
             try {
                 await db.collection('users').doc(currentUser.uid).update({
-                    balance: firebase.firestore.FieldValue.increment(amount - currentBet)
+                    balance: firebase.firestore.FieldValue.increment(winnings)
                 });
                 
                 // Update local balance
-                userData.balance += (amount - currentBet);
+                userData.balance += winnings;
                 balanceEl.textContent = formatMoney(userData.balance);
                 
                 // Save game result
                 await db.collection('plinko_games').add({
                     bet: currentBet,
-                    multiplier: amount / currentBet,
-                    payout: amount,
+                    multiplier: winnings / currentBet,
+                    payout: winnings,
                     riskLevel: currentRisk,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     userId: currentUser.uid
@@ -833,7 +839,7 @@
                 });
             });
             
-            // Account menu toggle - fixed to properly show/hide
+            // Account menu toggle
             accountBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 accountMenu.classList.toggle('show');
