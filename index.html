@@ -430,7 +430,6 @@
         // Game State
         let currentUser = null;
         let userData = null;
-        let gameActive = false;
         let currentBet = 0;
         let currentRisk = "low";
         let balls = [];
@@ -438,6 +437,7 @@
         let buckets = [];
         let ballId = 0;
         let animationFrameId = null;
+        let canDropBall = true;
 
         // Multiplier tables
         const multiplierTables = {
@@ -468,30 +468,35 @@
             return value.toFixed(0);
         }
 
-        // Initialize Plinko board
+        // Initialize Plinko board with centered pegs
         function initPlinkoBoard() {
             const boardWidth = plinkoBoard.clientWidth;
             const boardHeight = plinkoBoard.clientHeight;
             
-            // Create pegs
+            // Clear existing pegs and buckets
+            plinkoBoard.innerHTML = '';
+            pegs = [];
+            buckets = [];
+            
+            // Create pegs in a centered triangular pattern
             const pegRows = 12;
             const pegCols = 9;
             const pegHorizontalSpacing = boardWidth / (pegCols + 1);
             const pegVerticalSpacing = (boardHeight * 0.8) / pegRows;
             
             for (let row = 0; row < pegRows; row++) {
-                const colsInRow = pegCols - Math.abs(Math.floor(pegCols / 2) - row % pegCols);
-                const startCol = (pegCols - colsInRow) / 2;
+                const offset = (pegCols - (row % pegCols)) / 2;
+                const pegsInRow = pegCols - (row % pegCols);
                 
-                for (let col = 0; col < colsInRow; col++) {
+                for (let col = 0; col < pegsInRow; col++) {
                     const peg = document.createElement('div');
                     peg.className = 'peg';
-                    peg.style.left = `${(startCol + col + 0.5) * pegHorizontalSpacing}px`;
+                    peg.style.left = `${(offset + col + 0.5) * pegHorizontalSpacing}px`;
                     peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
                     plinkoBoard.appendChild(peg);
                     pegs.push({
                         element: peg,
-                        x: (startCol + col + 0.5) * pegHorizontalSpacing,
+                        x: (offset + col + 0.5) * pegHorizontalSpacing,
                         y: (row + 1) * pegVerticalSpacing,
                         radius: 6
                     });
@@ -532,8 +537,8 @@
             };
             
             ball.element.className = 'ball';
-            ball.element.style.left = `${ball.x}px`;
-            ball.element.style.top = `${ball.y}px`;
+            ball.element.style.left = `${ball.x - ball.radius}px`;
+            ball.element.style.top = `${ball.y - ball.radius}px`;
             plinkoBoard.appendChild(ball.element);
             
             balls.push(ball);
@@ -642,7 +647,7 @@
             if (balls.length > 0) {
                 animationFrameId = requestAnimationFrame(gameLoop);
             } else {
-                gameActive = false;
+                canDropBall = true;
                 placeBetBtn.disabled = false;
             }
         }
@@ -674,7 +679,7 @@
                 // Save game result
                 await db.collection('plinko_games').add({
                     bet: currentBet,
-                    multiplier: multiplier.toFixed(2),
+                    multiplier: amount / currentBet,
                     payout: amount,
                     riskLevel: currentRisk,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -758,8 +763,10 @@
 
         // Setup event listeners
         function setupEventListeners() {
-            // Place bet button
+            // Place bet button - allows spamming balls
             placeBetBtn.addEventListener('click', async () => {
+                if (!canDropBall) return;
+                
                 const betAmount = parseFloat(betAmountEl.value);
                 
                 if (isNaN(betAmount) || betAmount < 1) {
@@ -772,8 +779,6 @@
                     return;
                 }
                 
-                if (gameActive) return;
-                
                 try {
                     // Deduct bet amount
                     await db.collection('users').doc(currentUser.uid).update({
@@ -785,12 +790,15 @@
                     
                     // Start game
                     currentBet = betAmount;
-                    gameActive = true;
-                    placeBetBtn.disabled = true;
+                    canDropBall = true; // Allow spamming
                     
                     // Create and drop ball
                     createBall();
-                    animationFrameId = requestAnimationFrame(gameLoop);
+                    
+                    // Start game loop if not already running
+                    if (!animationFrameId) {
+                        animationFrameId = requestAnimationFrame(gameLoop);
+                    }
                 } catch (error) {
                     console.error("Error placing bet:", error);
                 }
@@ -825,20 +833,17 @@
                 });
             });
             
-            // Account menu toggle
+            // Account menu toggle - fixed to properly show/hide
             accountBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 accountMenu.classList.toggle('show');
             });
             
             // Close menu when clicking outside
-            document.addEventListener('click', function() {
-                accountMenu.classList.remove('show');
-            });
-            
-            // Prevent menu from closing when clicking inside it
-            accountMenu.addEventListener('click', function(e) {
-                e.stopPropagation();
+            document.addEventListener('click', function(e) {
+                if (!accountMenu.contains(e.target) && e.target !== accountBtn) {
+                    accountMenu.classList.remove('show');
+                }
             });
             
             // Logout button
