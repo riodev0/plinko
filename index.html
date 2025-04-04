@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TB Plinko V2</title>
+    <title>TB Plinko - Fixed Board</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -171,12 +171,13 @@
             background: var(--darker);
             border-radius: 16px;
             position: relative;
-            overflow: hidden;
+            overflow: hidden !important;
             margin-bottom: 2rem;
             border: 1px solid var(--gray);
             flex-shrink: 0;
             contain: strict;
             will-change: transform;
+            box-sizing: content-box !important;
         }
         
         .peg {
@@ -186,6 +187,7 @@
             background: var(--primary);
             border-radius: 50%;
             transform: translate(-50%, -50%);
+            will-change: transform;
         }
         
         .ball {
@@ -197,6 +199,7 @@
             transform: translate(-50%, -50%);
             z-index: 10;
             transition: transform 0.05s linear;
+            will-change: transform;
         }
         
         .bucket {
@@ -210,6 +213,7 @@
             align-items: center;
             font-weight: bold;
             color: var(--primary);
+            will-change: transform;
         }
         
         .bet-controls {
@@ -485,12 +489,17 @@
             return value.toFixed(0);
         }
 
-        // Initialize Plinko board with original peg layout
+        // Initialize Plinko board with fixed dimensions
         function initPlinkoBoard() {
             const boardWidth = plinkoBoard.clientWidth;
             const boardHeight = plinkoBoard.clientHeight;
             
+            // Clear and lock the board dimensions
             plinkoBoard.innerHTML = '';
+            plinkoBoard.style.width = boardWidth + 'px';
+            plinkoBoard.style.height = boardHeight + 'px';
+            plinkoBoard.style.overflow = 'hidden';
+            
             pegs = [];
             buckets = [];
             
@@ -507,8 +516,11 @@
                     const xOffset = (row % 2 === 0) ? 0 : pegHorizontalSpacing / 2;
                     const peg = document.createElement('div');
                     peg.className = 'peg';
+                    peg.style.position = 'absolute';
                     peg.style.left = `${xOffset + (startCol + col + 0.5) * pegHorizontalSpacing}px`;
                     peg.style.top = `${(row + 1) * pegVerticalSpacing}px`;
+                    peg.style.transform = 'translate(-50%, -50%)';
+                    peg.style.willChange = 'transform';
                     plinkoBoard.appendChild(peg);
                     pegs.push({
                         element: peg,
@@ -519,15 +531,17 @@
                 }
             }
             
-            // Create buckets
+            // Create buckets with fixed positions
             const bucketCount = 9;
             const bucketWidth = boardWidth / bucketCount;
             
             for (let i = 0; i < bucketCount; i++) {
                 const bucket = document.createElement('div');
                 bucket.className = 'bucket';
+                bucket.style.position = 'absolute';
                 bucket.style.left = `${i * bucketWidth}px`;
                 bucket.style.width = `${bucketWidth}px`;
+                bucket.style.bottom = '0';
                 bucket.textContent = `${multiplierTables.low[i]}x`;
                 plinkoBoard.appendChild(bucket);
                 buckets.push({
@@ -539,7 +553,7 @@
             }
         }
 
-        // Create a new ball
+        // Create a new ball with strict containment
         function createBall() {
             const boardWidth = plinkoBoard.clientWidth;
             const ball = {
@@ -554,25 +568,34 @@
             };
             
             ball.element.className = 'ball';
-            ball.element.style.left = `${ball.x - ball.radius}px`;
-            ball.element.style.top = `${ball.y - ball.radius}px`;
+            ball.element.style.position = 'absolute';
+            ball.element.style.left = `${ball.x}px`;
+            ball.element.style.top = `${ball.y}px`;
+            ball.element.style.transform = 'translate(-50%, -50%)';
+            ball.element.style.willChange = 'transform';
             plinkoBoard.appendChild(ball.element);
             
             balls.push(ball);
             return ball;
         }
 
-        // Update ball position
+        // Enhanced updateBall function with strict boundary checks
         function updateBall(ball) {
             if (!ball.active) return null;
 
             const gravity = 0.2;
             const friction = 0.995;
             const bounce = 0.8;
+            const boardWidth = plinkoBoard.clientWidth;
+            const boardHeight = plinkoBoard.clientHeight;
             
             ball.vy += gravity;
             ball.x += ball.vx;
             ball.y += ball.vy;
+            
+            // Strict boundary enforcement
+            ball.x = Math.max(ball.radius, Math.min(boardWidth - ball.radius, ball.x));
+            ball.y = Math.max(ball.radius, Math.min(boardHeight - ball.radius, ball.y));
             
             // Check collision with pegs
             for (const peg of pegs) {
@@ -593,25 +616,16 @@
                 }
             }
             
-            // Wall collisions
-            if (ball.x < ball.radius) {
-                ball.x = ball.radius;
-                ball.vx *= -bounce;
-            } else if (ball.x > plinkoBoard.clientWidth - ball.radius) {
-                ball.x = plinkoBoard.clientWidth - ball.radius;
-                ball.vx *= -bounce;
-            }
-            
             // Apply friction
             ball.vx *= friction;
             ball.vy *= friction;
             
-            // Update element position
-            ball.element.style.left = `${ball.x - ball.radius}px`;
-            ball.element.style.top = `${ball.y - ball.radius}px`;
+            // Update element position with enforced boundaries
+            ball.element.style.left = `${ball.x}px`;
+            ball.element.style.top = `${ball.y}px`;
             
             // Check if ball reached bottom
-            if (ball.y > plinkoBoard.clientHeight - 20) {
+            if (ball.y >= boardHeight - 20) {
                 ball.active = false;
                 for (const bucket of buckets) {
                     if (ball.x >= bucket.x - bucket.width / 2 && ball.x < bucket.x + bucket.width / 2) {
